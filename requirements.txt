@@ -1,0 +1,9 @@
+whisperx==3.4.2
+ctranslate2==4.4.0
+fastapi==0.117.1
+uvicorn==0.24.0
+python-multipart==0.0.6
+
+torch==2.5.1+cu121
+torchaudio==2.5.1+cu121
+--extra-index-url https://download.pytorch.org/whl/cu121

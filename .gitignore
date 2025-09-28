@@ -1,0 +1,9 @@
+*.mp3
+*.wav
+*.mp4
+*.zip
+*.tar
+__pycache__
+.venv
+venv
+.env
