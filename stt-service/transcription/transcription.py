@@ -31,5 +31,3 @@ class STTEngine:
         
         finally:
             os.unlink(temp_path)
-    
-
