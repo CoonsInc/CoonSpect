@@ -6,6 +6,11 @@ services:
     command: uvicorn src.main:app --host 0.0.0.0 --port 8000
     ports:
       - 8000:8000
+  
+  stt-service:
+    build: ./stt-service/
+    ports:
+      - 8000:8001
 
   frontend:
     build: ./frontend/
