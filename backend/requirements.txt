@@ -1,1 +1,3 @@
 fastapi[all]==0.117.1
+alembic 
+psycopg2-binary
