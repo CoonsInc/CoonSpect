@@ -19,9 +19,9 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-RUN python3 -c "import whisperx; whisperx.load_model('turbo', device='cpu', compute_type='int8')"
+#RUN python3 -c "import whisperx; whisperx.load_model('turbo', device='cpu', compute_type='int8')"
 
-COPY transcription/ /transcription
-WORKDIR /transcription
+COPY src/ /app
+WORKDIR /app
 
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

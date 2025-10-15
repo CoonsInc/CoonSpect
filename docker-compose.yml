@@ -10,7 +10,17 @@ services:
   stt-service:
     build: ./stt-service/
     ports:
-      - 8000:8001
+      - 8001:8000
+    # runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
 
   frontend:
     build: ./frontend/

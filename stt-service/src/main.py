@@ -13,8 +13,6 @@ async def transcribe_audio(
 ):
     audio_bytes = await file.read()
     
-    #validate_file(file, audio_bytes)
-    
     try:
         text = stt_engine.transcribe(audio_bytes, language)
         return {
