@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # Запускаем миграции
 alembic upgrade head

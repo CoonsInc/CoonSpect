@@ -1,7 +1,8 @@
 from celery import Celery
 import time
+from config import REDIS_URL
 
-redis_url = 'redis://redis:6379/0'
+redis_url = REDIS_URL # "redis://redis:6379/0"
 
 app = Celery(
     'celery_app',
@@ -17,7 +18,7 @@ def add_numbers(x, y):
     print(f"Worker: Result is {result}")
     return result
 
-@app.task(name='celery_app.add_numbers')
+@app.task(name='celery_app.genrep')
 def generate_report(user_id):
     print(f"Worker: Generating report for user {user_id}")
     time.sleep(5)
