@@ -1,19 +1,64 @@
 version: "3.9"
 
 services:
+  db:
+    image: postgres:15
+    container_name: coonspect-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pwd1234
+      POSTGRES_DB: coonspect
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d coonspect"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  redis:
+    image: redis:8.2.2
+    container_name: coonspect-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
   backend:
     build: ./backend/
-    command: uvicorn src.main:app --host 0.0.0.0 --port 8000
+    container_name: coonspect-backend
     ports:
-      - 8000:8000
-  
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+psycopg2://user:pwd1234@db:5432/coonspect
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+
   stt-service:
     build: ./stt-service/
+    container_name: coonspect-stt
     ports:
-      - 8000:8001
+      - "8001:8000"
 
   frontend:
     build: ./frontend/
+    container_name: coonspect-frontend
     network_mode: host
-    depends_on:
-      - backend
+    # depends_on: # не зависит пока на этапе разработки (чтобы фронтедер мог независимо собирать)
+    #   - backend
+
+volumes:
+  postgres_data:
