@@ -19,7 +19,6 @@ async def health_check():
 app.include_router(user_router)
 app.include_router(lecture_router)
 
-
 @app.get("/create_task")
 def create_task():
     task_id: int = 0
