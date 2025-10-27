@@ -1,4 +1,4 @@
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from celery import chain
 from celery_app import *
 from wsmanager import manager
@@ -46,7 +46,21 @@ async def check_task_id(task_id: int, sender: str = None):
 
 @app.websocket("/ws/{task_id}")
 async def websocket_endpoint(websocket: WebSocket, task_id: int):
-    if (task_id in tasks.keys()):
+    if task_id in tasks.keys():
         await manager.connect(websocket, task_id)
         await manager.send_message(task_id, json.dumps({"type":"upload_url", "url":"stt-service"}))
         await manager.send_message(task_id, tasks[task_id])
+        
+        try:
+            # Добавляем цикл ожидания сообщений
+            while True:
+                # Ждем любое сообщение от клиента (можно просто игнорировать содержимое)
+                data = await websocket.receive_text()
+                print(f"Received from client {task_id}: {data}")
+                
+        except WebSocketDisconnect:
+            print(f"Client {task_id} disconnected")
+        except Exception as e:
+            print(f"Connection error for task {task_id}: {e}")
+        finally:
+            manager.disconnect(task_id)
