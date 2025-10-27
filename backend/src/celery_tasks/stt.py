@@ -1,4 +1,4 @@
-from src.celery_app import app
+from src.celery_app import celery
 import requests
 from sqlalchemy.orm import Session
 from src.db.session import SessionLocal
@@ -7,7 +7,7 @@ from src.db.models.transcription import Transcription
 from src.config import STT_SERVICE_URL
 from sqlalchemy.exc import SQLAlchemyError
 
-@app.task(bind=True, name="tasks.transcribe_lecture")
+@celery.task(bind=True, name="tasks.transcribe_lecture") # короче эту часть полностью переделать нужно будет так как у нас всё поменялось
 def transcribe_lecture(self, lecture_id: str, source: str):
     session: Session = SessionLocal()
     try:
