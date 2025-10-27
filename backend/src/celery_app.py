@@ -1,58 +1,68 @@
+# Я пока что не знаю зачем это нужно - Вова
+
 from celery import Celery
 import time
 from config import REDIS_URL
 
 redis_url = REDIS_URL # "redis://redis:6379/0"
 
-app = Celery(
-    'celery_app',
-    broker=redis_url,        # Для очереди задач
-    backend=redis_url,       # Для хранения результатов ← ЭТОГО НЕ ХВАТАЛО!
+celery = Celery(
+    "tasks",
+    broker=redis_url,
+    backend=redis_url
 )
 
-@app.task(name='celery_app.add_numbers')
-def add_numbers(x, y):
-    print(f"Worker: Calculating {x} + {y}")
-    time.sleep(3)  # Имитация работы
-    result = x + y
-    print(f"Worker: Result is {result}")
-    return result
+# Очереди для разных типов задач
+celery.conf.task_routes = {
+    "stt_task": {"queue": "stt_queue"},
+    "rag_task": {"queue": "rag_queue"}, 
+    "llm_task": {"queue": "llm_queue"},
+}
 
-@app.task(name='celery_app.genrep')
-def generate_report(user_id):
-    print(f"Worker: Generating report for user {user_id}")
-    time.sleep(5)
-    return f"Report for user {user_id}"
-
-def test_celery():
-    print("=== Testing Celery ===")
+@celery.task(bind=True)
+def stt_task(self, audio_file_path, task_id):
+    self.update_state(
+        state='PROGRESS',
+        meta={'stage': 'stt', 'progress': 25, 'task_id': task_id}
+    )
     
-    # Проверяем подключение к Redis
-    try:
-        import redis
-        r = redis.Redis(host='redis', port=6379, db=0)
-        r.ping()
-        print("✓ Redis connection: OK")
-    except Exception as e:
-        print(f"✗ Redis connection failed: {e}")
-        return
+    # STT логика
+    text = transcribe_audio(audio_file_path)
 
-    # Отправляем задачу
-    print("Sending task to Celery...")
-    task = add_numbers.delay(10, 20)
-    print(f"Task ID: {task.id}")
-    print(f"Task status: {task.status}")
+    return {
+        'stage': 'stt_completed', 
+        'text': text,
+        'task_id': task_id
+    }
 
-    # Ждем результат с таймаутом
-    try:
-        print("Waiting for result (max 30 seconds)...")
-        result = task.get(timeout=30)
-        print(f"✓ Task completed! Result: {result}")
-        print(f"Final status: {task.status}")
-    except Exception as e:
-        print(f"✗ Task failed: {e}")
-        print("Make sure Celery worker is running!")
-        print("Run: celery -A src.celery_app worker --loglevel=info")
+@celery.task(bind=True)
+def rag_task(self, text, task_id):
+    self.update_state(
+        state='PROGRESS', 
+        meta={'stage': 'rag', 'progress': 50, 'task_id': task_id}
+    )
+    
+    # RAG логика
+    context = rag_search(text)
 
-if __name__ == '__main__':
-    test_celery()
+    return {
+        'stage': 'rag_completed',
+        'context': context,
+        'task_id': task_id
+    }
+
+@celery.task(bind=True) 
+def llm_task(self, text, task_id):
+    self.update_state(
+        state='PROGRESS', 
+        meta={'stage': 'rag', 'progress': 50, 'task_id': task_id}
+    )
+    
+    # RAG логика
+    context = rag_search(text)
+    
+    return {
+        'stage': 'rag_completed',
+        'context': context,
+        'task_id': task_id
+    }
