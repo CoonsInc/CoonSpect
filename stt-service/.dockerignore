@@ -13,6 +13,7 @@ __pycache__
 *.wav
 *.mp4
 *.zip
+*.ogg
 *.tar
 .venv
 venv/
