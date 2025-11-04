@@ -2,6 +2,7 @@
 *.wav
 *.mp4
 *.m4a
+*.ogg
 *.zip
 *.tar
 __pycache__

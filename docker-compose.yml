@@ -7,11 +7,11 @@ services:
     ports:
       - 8000:8000
   
+
   stt-service:
     build: ./stt-service/
     ports:
-      - 8001:8000
-    # runtime: nvidia
+      - "8001:8000"
     deploy:
       resources:
         reservations:
@@ -21,6 +21,9 @@ services:
               capabilities: [gpu]
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
+      - PYTHONUNBUFFERED=1
+      - LD_LIBRARY_PATH=/usr/local/lib/python3.10/dist-packages/nvidia/cudnn/lib/:$LD_LIBRARY_PATH
+
 
   frontend:
     build: ./frontend/
