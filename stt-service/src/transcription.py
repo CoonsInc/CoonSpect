@@ -2,6 +2,8 @@ import os
 import whisperx
 import torch
 import tempfile
+import subprocess
+from pathlib import Path
 
 class STTEngine:
     def __init__(self, model_size="turbo"):
@@ -15,19 +17,57 @@ class STTEngine:
             compute_type=self.compute_type
         )
         print("✅ Модель загружена")
+        
+    # def extract_audio_from_video(self, video_bytes: bytes, original_filename: str) -> str:
+    #     """Извлекает аудио из видеофайла и возвращает путь к временному аудиофайлу"""
+    #     # Создаем временный видеофайл
+    #     with tempfile.NamedTemporaryFile(delete=False, suffix=Path(original_filename).suffix) as video_file:
+    #         video_file.write(video_bytes)
+    #         video_path = video_file.name
+        
+    #     # Создаем временный аудиофайл
+    #     audio_path = video_path + "_extracted_audio.wav"
+        
+    #     try:
+    #         # Используем ffmpeg для извлечения аудио
+    #         command = [
+    #             'ffmpeg',
+    #             '-i', video_path,
+    #             '-vn',  # без видео
+    #             '-acodec', 'pcm_s16le',  # кодек для WAV
+    #             '-ar', '16000',  # частота дискретизации
+    #             '-ac', '1',  # моно
+    #             '-y',  # перезаписать если файл существует
+    #             audio_path
+    #         ]
+            
+    #         result = subprocess.run(command, capture_output=True, text=True)
+    #         if result.returncode != 0:
+    #             raise Exception(f"Ошибка извлечения аудио: {result.stderr}")
+            
+    #         return audio_path
+            
+    #     finally:
+    #         # Удаляем временный видеофайл
+    #         if os.path.exists(video_path):
+    #             os.unlink(video_path)
     
-    def transcribe(self, audio_bytes: bytes, language: str = "ru") -> str:
+    def transcribe(self, file_bytes: bytes, language: str = "ru", file_type: str = "audio") -> str:
         
+        # if file_type == "audio":
         with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as f:
-            f.write(audio_bytes)
+            f.write(file_bytes)
             temp_path = f.name
-        
+        # else:
+        #     self.extract_audio_from_video(file_bytes, )
+             
+            
         try:
             audio = whisperx.load_audio(temp_path)
             result = self.model.transcribe(audio, language=language)
             
-            text = " ".join(segment["text"] for segment in result["segments"])
-            return text
+            return result
         
         finally:
-            os.unlink(temp_path)
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
