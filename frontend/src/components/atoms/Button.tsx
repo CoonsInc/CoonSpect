@@ -1,11 +1,14 @@
+
 interface ButtonProps {
   children: React.ReactNode;
   onClick?: () => void;
+  type?: "button" | "submit" | "reset";
   variant?: "primary" | "secondary" | "ghost";
   className?: string;
+  disabled?: boolean;
 }
 
-function Button({ children, onClick, variant = "primary", className = "" }: ButtonProps) {
+function Button({ children, onClick, type = "button", variant = "primary", className = "", disabled = false }: ButtonProps) {
 
     const base =
         "px-6 py-2 rounded-lg font-medium transition duration-200 focus:outline-none";
@@ -17,7 +20,7 @@ function Button({ children, onClick, variant = "primary", className = "" }: Butt
     };
 
     return (
-        <button onClick={onClick} className={`${base} ${variants[variant]} ${className}`}>
+        <button type={type} onClick={onClick} disabled={disabled} className={`${base} ${variants[variant]} ${className}`}>
             {children}
         </button>
     )

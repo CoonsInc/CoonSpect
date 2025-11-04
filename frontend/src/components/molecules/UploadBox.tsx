@@ -1,5 +1,7 @@
-// зона для перетаскивания файла
-import { useState, useRef } from "react"; 
+ // components/molecules/UploadBox.tsx
+import { useState, useRef, useEffect } from "react";
+import { useMainStore } from "../../stores/mainStore";
+
 import Icon from "../atoms/Icon";
 import Text from "../atoms/Text";
 
@@ -11,17 +13,31 @@ function UploadBox({ onFileSelect }: UploadBoxProps) {
     const [isDragging, setIsDragging] = useState(false);
     const [fileName, setFileName] = useState<string | null>(null);
     const inputRef = useRef<HTMLInputElement>(null);
+    const { audioFile, setAudioFile, lastSavedPath } = useMainStore();
 
-    const handleFile = (file: File) => {
+    useEffect(() => {
+        if (audioFile) {
+            setFileName(audioFile.name);
+        } else {
+            setFileName(null);
+        }
+    }, [audioFile]);
+
+    const handleFile = async (file: File) => {
         if (file && file.type.startsWith('audio/')) {
             setFileName(file.name);
+            setAudioFile(file);
             onFileSelect(file);
+
+            // Сохранение файла будет происходить при нажатии кнопки "Сгенерировать конспект"
         } else {
             alert("Пожалуйста, выберите аудиофайл.");
         }
     };
 
-     const handleDragEnter = (e: React.DragEvent<HTMLElement>) => {
+
+
+    const handleDragEnter = (e: React.DragEvent<HTMLElement>) => {
         e.preventDefault();
         e.stopPropagation();
         setIsDragging(true);
@@ -41,7 +57,7 @@ function UploadBox({ onFileSelect }: UploadBoxProps) {
         setIsDragging(true);
     };
 
-     const handleDrop = (e: React.DragEvent<HTMLElement>) => {
+    const handleDrop = (e: React.DragEvent<HTMLElement>) => {
         e.preventDefault();
         e.stopPropagation();
         setIsDragging(false);
@@ -60,7 +76,8 @@ function UploadBox({ onFileSelect }: UploadBoxProps) {
     };
 
     const handleClick = () => inputRef.current?.click();
-    
+
+    const { isSaving } = useMainStore();
 
     return (
         <div
@@ -76,6 +93,7 @@ function UploadBox({ onFileSelect }: UploadBoxProps) {
                     : 'border-purple-600/50 hover:border-purple-400 hover:bg-purple-500/5'
                 }
                 ${fileName ? 'border-green-500 bg-green-500/5' : ''}
+                ${isSaving ? 'opacity-50 cursor-wait' : ''}
             `}
         >
             <input
@@ -87,15 +105,30 @@ function UploadBox({ onFileSelect }: UploadBoxProps) {
             />
 
             <div className="text-center p-8">
-                {fileName ? (
+                {isSaving ? (
+                    <>
+                        <Icon name="Loader2" className="w-16 h-16 text-blue-400 mb-4 mx-auto animate-spin" />
+                        <Text size="lg" className="text-blue-400 font-semibold mb-2">
+                            Сохраняем на диск...
+                        </Text>
+                        <Text size="sm" className="text-gray-400">
+                            Файл: {fileName}
+                        </Text>
+                    </>
+                ) : fileName ? (
                     <>
                         <Icon name="Check" className="w-16 h-16 text-green-400 mb-4 mx-auto" />
                         <Text size="lg" className="text-green-400 font-semibold mb-2">
-                            Файл выбран
+                            {lastSavedPath ? 'Файл сохранен!' : 'Файл готов'}
                         </Text>
                         <Text size="sm" className="text-gray-300 break-all mb-2">
                             {fileName}
                         </Text>
+                        {lastSavedPath && (
+                            <Text size="sm" className="text-green-400 mb-1">
+                                📁 Путь: {lastSavedPath}
+                            </Text>
+                        )}
                         <Text size="sm" className="text-gray-500">
                             Нажмите для выбора другого файла
                         </Text>

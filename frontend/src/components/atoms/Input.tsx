@@ -3,6 +3,7 @@ interface InputProps {
   value?: string;
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   placeholder?: string;
+  disabled?: boolean;
   className?: string;
 }
 
@@ -11,6 +12,7 @@ const Input: React.FC<InputProps> = ({
   value,
   onChange,
   placeholder,
+  disabled = false,
   className = "",
 }) => (
   <input
@@ -18,7 +20,8 @@ const Input: React.FC<InputProps> = ({
     value={value}
     onChange={onChange}
     placeholder={placeholder}
-    className={`bg-[#16182D] text-white px-4 py-2 rounded-lg outline-none focus:ring-2 focus:ring-purple-500 ${className}`}
+    disabled={disabled}
+    className={`bg-[#16182D] text-white px-4 py-2 rounded-lg outline-none focus:ring-2 focus:ring-purple-500 ${disabled ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}
   />
 );
 

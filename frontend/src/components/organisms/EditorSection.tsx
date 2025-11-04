@@ -1,5 +1,6 @@
-// компонент с полем для редактирования и кнопками сохранения 
-import React, { useState } from "react";
+// components/organisms/EditorSection.tsx
+import React, { useState, useEffect } from "react";
+import { useMainStore } from "../../stores/mainStore";
 import EditorToolbar from "../molecules/EditorToolbar";
 import Heading from "../atoms/Heading";
 import Button from "../atoms/Button";
@@ -10,7 +11,14 @@ interface EditorSectionProps {
 }
 
 const EditorSection: React.FC<EditorSectionProps> = ({ initialText, onSave }) => {
+    const { processedText } = useMainStore();
     const [text, setText] = useState(initialText);
+
+    useEffect(() => {
+        setText(processedText || initialText);
+    }, [processedText, initialText]);
+
+
 
     return (
         <section className="min-h-screen flex flex-col items-center py-20 px-6">
@@ -27,4 +35,3 @@ const EditorSection: React.FC<EditorSectionProps> = ({ initialText, onSave }) =>
 };
 
 export default EditorSection;
-
