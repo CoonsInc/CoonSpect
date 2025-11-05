@@ -51,10 +51,14 @@ async def check_task_id(task_id: int, sender: str = None):
 
 @app.post("/finish")
 async def finish(content: dict):
+    if (tasks.get(content["task_id"]) == None):
+        return {"status":"unsuccess"}
+    
+    tasks.pop(content["task_id"])
     tasks_result[content["task_id"]] = content["content"]
     await manager.send_message(content["task_id"], "finish")
-
     return {"status":"success"}
+    
 
 
 @app.post("/result/{task_id}")
