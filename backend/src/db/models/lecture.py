@@ -13,6 +13,11 @@ class Lecture(Base):
     audio_url = Column(String, nullable=False)  # ссылка на S3 или локальный путь
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+    status = Column(String, default="pending")  # pending, transcribing, transcribed, summarizing, done, failed
+    task_id = Column(String, nullable=True)     # celery task id для дебага / отслеживания
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+
     user = relationship("User", backref="lectures")
     transcription = relationship("Transcription", back_populates="lecture", uselist=False)
     summary = relationship("Summary", back_populates="lecture", uselist=False)
