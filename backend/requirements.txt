@@ -3,3 +3,5 @@ alembic
 psycopg2-binary
 celery
 redis
+aiohttp
+requests

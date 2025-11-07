@@ -1,29 +1,28 @@
 // components/organisms/UploadSection.tsx
 import React from "react";
-import { useMainStore } from "../../stores/mainStore";
-import { useUser } from "../../contexts/UserContext";
+import { useTextStore, useAuthStore } from "../../stores";
 import { useNavigate } from "react-router-dom";
 import UploadBox from "../molecules/UploadBox";
 import Button from "../atoms/Button";
 import Heading from "../atoms/Heading";
-import Text from "../atoms/Text";
 
 interface UploadSectionProps {
   onGenerate: (file: File) => void;
 }
 
 const UploadSection: React.FC<UploadSectionProps> = ({ onGenerate }) => {
-  const { audioFile, lastSavedPath } = useMainStore();
-  const { user } = useUser();
+  const { audioFile } = useTextStore();
+  const { user } = useAuthStore();
   const navigate = useNavigate();
 
 
-
   const handleGenerate = () => {
+
     if (!audioFile) {
       alert('Пожалуйста, загрузите аудиофайл перед генерацией конспекта.');
       return;
     }
+
     if (!user) {
       navigate('/login');
       return;
@@ -54,21 +53,6 @@ const UploadSection: React.FC<UploadSectionProps> = ({ onGenerate }) => {
       >
         Сгенерировать конспект
       </Button>
-      {audioFile && (
-        <div className="mt-4 p-4 bg-gray-800 rounded-lg text-sm">
-          <Text size="sm" className="text-green-400 font-mono">
-            {lastSavedPath ? '✅ Файл сохранен на диск' : '📱 Файл в памяти приложения'}
-          </Text>
-          <Text size="sm" className="text-gray-400">
-            {audioFile.name} ({(audioFile.size / 1024 / 1024).toFixed(2)} MB)
-          </Text>
-          {lastSavedPath && (
-            <Text size="sm" className="text-green-400">
-              📍 {lastSavedPath}
-            </Text>
-          )}
-        </div>
-      )}
     </div>
   );
 };

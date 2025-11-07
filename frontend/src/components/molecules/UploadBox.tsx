@@ -1,6 +1,6 @@
- // components/molecules/UploadBox.tsx
+// components/molecules/UploadBox.tsx
 import { useState, useRef, useEffect } from "react";
-import { useMainStore } from "../../stores/mainStore";
+import { useTextStore } from "../../stores";
 
 import Icon from "../atoms/Icon";
 import Text from "../atoms/Text";
@@ -13,7 +13,7 @@ function UploadBox({ onFileSelect }: UploadBoxProps) {
     const [isDragging, setIsDragging] = useState(false);
     const [fileName, setFileName] = useState<string | null>(null);
     const inputRef = useRef<HTMLInputElement>(null);
-    const { audioFile, setAudioFile, lastSavedPath } = useMainStore();
+    const { audioFile, setAudioFile, lastSavedPath, isSaving } = useTextStore();
 
     useEffect(() => {
         if (audioFile) {
@@ -28,14 +28,11 @@ function UploadBox({ onFileSelect }: UploadBoxProps) {
             setFileName(file.name);
             setAudioFile(file);
             onFileSelect(file);
-
-            // Сохранение файла будет происходить при нажатии кнопки "Сгенерировать конспект"
+            // теперь файл живёт только в памяти runtime
         } else {
             alert("Пожалуйста, выберите аудиофайл.");
         }
     };
-
-
 
     const handleDragEnter = (e: React.DragEvent<HTMLElement>) => {
         e.preventDefault();
@@ -61,7 +58,7 @@ function UploadBox({ onFileSelect }: UploadBoxProps) {
         e.preventDefault();
         e.stopPropagation();
         setIsDragging(false);
-        
+
         const files = e.dataTransfer.files;
         if (files && files.length > 0) {
             handleFile(files[0]);
@@ -77,8 +74,6 @@ function UploadBox({ onFileSelect }: UploadBoxProps) {
 
     const handleClick = () => inputRef.current?.click();
 
-    const { isSaving } = useMainStore();
-
     return (
         <div
             onClick={handleClick}
@@ -88,8 +83,8 @@ function UploadBox({ onFileSelect }: UploadBoxProps) {
             onDrop={handleDrop}
             className={`
                 w-4/5 h-80 border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer transition-all duration-300
-                ${isDragging 
-                    ? 'border-purple-400 bg-purple-500/10 scale-105 shadow-lg' 
+                ${isDragging
+                    ? 'border-purple-400 bg-purple-500/10 scale-105 shadow-lg'
                     : 'border-purple-600/50 hover:border-purple-400 hover:bg-purple-500/5'
                 }
                 ${fileName ? 'border-green-500 bg-green-500/5' : ''}
@@ -135,11 +130,11 @@ function UploadBox({ onFileSelect }: UploadBoxProps) {
                     </>
                 ) : (
                      <>
-                        <Icon 
-                            name={isDragging ? "Download" : "Upload"} 
+                        <Icon
+                            name={isDragging ? "Download" : "Upload"}
                             className={`w-16 h-16 mb-4 mx-auto transition-transform ${
                                 isDragging ? 'text-purple-400 scale-110' : 'text-purple-400'
-                            }`} 
+                            }`}
                         />
                         <Text size="lg" className="text-white font-semibold mb-2">
                             {isDragging ? "Отпустите файл" : "Перетащите аудиофайл"}
