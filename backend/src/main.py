@@ -1,10 +1,9 @@
 from src.api.routers.users import router as user_router
 from src.api.routers.lectures import router as lecture_router
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from celery import chain
 from celery_app import *
-import base64
 import aiohttp
 import tempfile
 import os
@@ -63,6 +62,55 @@ async def finish(content: dict):
     await manager.send_message(tid, "finish")
     return {"status": "success"}
 
+@app.post("/upload_audio/{task_id}")
+async def upload_audio(task_id: int, file: UploadFile = File(...)):
+    print(f"[UPLOAD] Task {task_id}, got file {file.filename}")
+    
+    if task_id not in tasks:
+        return {"status": "error", "reason": "invalid task_id"}
+
+    tmp_path = None
+    try:
+        # сохраняем временно файл
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
+            content = await file.read()
+            tmp.write(content)
+            tmp_path = tmp.name
+            
+        print(f"[UPLOAD] Saved temp file {tmp_path} ({len(content)} bytes)")
+
+        # отправляем сообщение клиенту (через WS)
+        await manager.send_message(task_id, "stt")
+
+        # отправляем файл в STT сервис
+        async with aiohttp.ClientSession() as session:
+            with open(tmp_path, "rb") as f:
+                form = aiohttp.FormData()
+                form.add_field("file", f, filename=file.filename, content_type="audio/wav")
+
+                async with session.post("http://stt-service:8000/transcribe", data=form) as resp:
+                    if resp.status != 200:
+                        error_msg = f"STT service error: {resp.status}"
+                        await manager.send_message(task_id, f"error: {error_msg}")
+                        return {"status": "stt_error", "message": error_msg}
+
+                    result = await resp.json()
+                    text = result.get("text", "")
+                    tasks_result[task_id] = text
+                    await manager.send_message(task_id, "finish")
+
+        return {"status": "success"}
+
+    except Exception as e:
+        print(f"[UPLOAD] Error processing task {task_id}: {e}")
+        await manager.send_message(task_id, f"error: {str(e)}")
+        return {"status": "error", "message": str(e)}
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.remove(tmp_path)
+            print(f"[UPLOAD] Temp file {tmp_path} deleted")
+
+
 @app.post("/result/{task_id}")
 async def get_result(task_id: int):
     print(f"[RESULT] Request for task_id={task_id}")
@@ -72,80 +120,16 @@ async def get_result(task_id: int):
     print(f"[RESULT] Returning content for task_id={task_id}, len={len(tasks_result[task_id])}")
     return {"exist": True, "content": tasks_result[task_id]}
 
+
 @app.websocket("/ws/{task_id}")
 async def websocket_endpoint(websocket: WebSocket, task_id: int):
-    print(f"[WS] Connection attempt for task_id={task_id}")
-    if task_id not in tasks:
-        print(f"[WS] Invalid task_id={task_id}, closing connection.")
-        await websocket.close(code=4000)
-        return
-
-    await manager.connect(websocket, task_id)
-    await manager.send_message(task_id, tasks[task_id])
-    print(f"[WS] WebSocket connected for task {task_id}")
+    print(f"[WS] Connected task {task_id}")
+    await manager.connect(websocket, task_id)   # сохраняем соединение по task_id
+    await manager.send_message(task_id, "ready") # сразу сообщаем фронту, что WS готов
 
     try:
         while True:
-            data = await websocket.receive_text()
-            print(f"[WS:{task_id}] Received raw data: {data[:100]}...")
-
-            try:
-                payload = json.loads(data)
-            except Exception as e:
-                print(f"[WS:{task_id}] Invalid JSON: {e}")
-                continue
-
-            if payload.get("type") == "file":
-                filename = payload.get("filename", f"task_{task_id}.wav")
-                print(f"[WS:{task_id}] File received: {filename}")
-
-                content_b64 = payload.get("content")
-                if not content_b64:
-                    print(f"[WS:{task_id}] Missing content field")
-                    await manager.send_message(task_id, "error: no content")
-                    continue
-
-                with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(filename)[1]) as tmp_file:
-                    audio_bytes = base64.b64decode(content_b64)
-                    tmp_file.write(audio_bytes)
-                    tmp_path = tmp_file.name
-                print(f"[WS:{task_id}] Temporary file saved at {tmp_path} ({len(audio_bytes)} bytes)")
-
-                await manager.send_message(task_id, "stt")
-
-                try:
-                    async with aiohttp.ClientSession() as session:
-                        with open(tmp_path, "rb") as f:
-                            form = aiohttp.FormData()
-                            form.add_field("file", f, filename=filename, content_type="audio/wav")
-
-                            print(f"[WS:{task_id}] Sending file to STT service...")
-                            async with session.post("http://stt-service:8000/transcribe", data=form) as resp:
-                                print(f"[WS:{task_id}] STT response status={resp.status}")
-                                if resp.status != 200:
-                                    await manager.send_message(task_id, f"error: stt failed {resp.status}")
-                                    continue
-
-                                stt_result = await resp.json()
-                                text = stt_result.get("text", "")
-                                print(f"[WS:{task_id}] STT text received ({len(text)} chars)")
-                                tasks_result[task_id] = text
-                                await manager.send_message(task_id, "finish")
-
-                except Exception as e:
-                    print(f"[WS:{task_id}] STT error: {e}")
-                    await manager.send_message(task_id, f"error: {e}")
-
-                finally:
-                    if os.path.exists(tmp_path):
-                        os.remove(tmp_path)
-                        print(f"[WS:{task_id}] Temp file {tmp_path} deleted")
-
-            else:
-                print(f"[WS:{task_id}] Unknown message type: {payload.get('type')}")
-
+            await websocket.receive_text()       # просто ждём, пока клиент не отвалится
     except WebSocketDisconnect:
-        print(f"[WS:{task_id}] Client disconnected")
-    finally:
         manager.disconnect(task_id)
-        print(f"[WS:{task_id}] Connection closed")
+        print(f"[WS] Disconnected {task_id}")

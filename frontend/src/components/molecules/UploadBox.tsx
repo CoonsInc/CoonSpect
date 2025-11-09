@@ -13,7 +13,7 @@ function UploadBox({ onFileSelect }: UploadBoxProps) {
     const [isDragging, setIsDragging] = useState(false);
     const [fileName, setFileName] = useState<string | null>(null);
     const inputRef = useRef<HTMLInputElement>(null);
-    const { audioFile, setAudioFile, lastSavedPath, isSaving } = useTextStore();
+    const { audioFile, setAudioFile, isSaving } = useTextStore();
 
     useEffect(() => {
         if (audioFile) {
@@ -28,9 +28,8 @@ function UploadBox({ onFileSelect }: UploadBoxProps) {
             setFileName(file.name);
             setAudioFile(file);
             onFileSelect(file);
-            // теперь файл живёт только в памяти runtime
         } else {
-            alert("Пожалуйста, выберите аудиофайл.");
+            alert("Пожалуйста, выберите аудио файл."); //или видео (ну пока без выебонов)
         }
     };
 
@@ -114,16 +113,11 @@ function UploadBox({ onFileSelect }: UploadBoxProps) {
                     <>
                         <Icon name="Check" className="w-16 h-16 text-green-400 mb-4 mx-auto" />
                         <Text size="lg" className="text-green-400 font-semibold mb-2">
-                            {lastSavedPath ? 'Файл сохранен!' : 'Файл готов'}
+                            Файл готов
                         </Text>
                         <Text size="sm" className="text-gray-300 break-all mb-2">
                             {fileName}
                         </Text>
-                        {lastSavedPath && (
-                            <Text size="sm" className="text-green-400 mb-1">
-                                📁 Путь: {lastSavedPath}
-                            </Text>
-                        )}
                         <Text size="sm" className="text-gray-500">
                             Нажмите для выбора другого файла
                         </Text>
@@ -143,7 +137,7 @@ function UploadBox({ onFileSelect }: UploadBoxProps) {
                             или нажмите для выбора
                         </Text>
                         <Text size="sm" className="text-gray-500">
-                            Поддерживаемые форматы: MP3, WAV, M4A, FLAC
+                            Поддерживаемые форматы: MP3, WAV, M4A и другие аудиофайлы
                         </Text>
                     </>
                 )}

@@ -10,7 +10,7 @@ export const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || 'ws://localhost:3
 
 // Добавим interceptor для авторизации (например, если токен будет храниться в localStorage)
 apiClient.interceptors.request.use(config => {
-  const token = localStorage.getItem('token'); // позже можно заменить на zustand
+  const token = localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }

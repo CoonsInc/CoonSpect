@@ -1,17 +1,15 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { createLectureTask, uploadAudioViaWebSocket, getLectureResult } from '../api/lectureApi';
+import { createLectureTask, uploadAudioViaHTTP, getLectureResult } from '../api/lectureApi';
 
 interface AudioState {
   audioFile: File | null;
   audioUrl: string | null;
-  lastSavedPath: string | null;
   isSaving: boolean;
   processedText: string;
   progressStatus: string | null;
 
   setAudioFile: (file: File | null) => void;
-  setLastSavedPath: (path: string | null) => void;
   setIsSaving: (saving: boolean) => void;
   setProcessedText: (text: string) => void;
   setProgressStatus: (status: string | null) => void;
@@ -26,7 +24,6 @@ export const useTextStore = create<AudioState>()(
     (set, get) => ({
       audioFile: null,
       audioUrl: null,
-      lastSavedPath: null,
       isSaving: false,
       processedText: '',
       progressStatus: null,
@@ -37,13 +34,12 @@ export const useTextStore = create<AudioState>()(
 
         if (file) {
           const audioUrl = URL.createObjectURL(file);
-          set({ audioFile: file, audioUrl, lastSavedPath: null });
+          set({ audioFile: file, audioUrl });
         } else {
-          set({ audioFile: null, audioUrl: null, lastSavedPath: null });
+          set({ audioFile: null, audioUrl: null });
         }
       },
 
-      setLastSavedPath: (path) => set({ lastSavedPath: path }),
       setIsSaving: (isSaving) => set({ isSaving }),
       setProcessedText: (text) => set({ processedText: text }),
       setProgressStatus: (status) => set({ progressStatus: status }),
@@ -51,7 +47,6 @@ export const useTextStore = create<AudioState>()(
       reset: () => set({
         audioFile: null,
         audioUrl: null,
-        lastSavedPath: null,
         isSaving: false,
         processedText: '',
         progressStatus: null,
@@ -60,7 +55,7 @@ export const useTextStore = create<AudioState>()(
       clearAudioFile: () => {
         const prev = get().audioUrl;
         if (prev) URL.revokeObjectURL(prev);
-        set({ audioFile: null, audioUrl: null, lastSavedPath: null, isSaving: false });
+        set({ audioFile: null, audioUrl: null, isSaving: false });
       },
 
       generateTranscript: async (file: File) => {
@@ -72,7 +67,7 @@ export const useTextStore = create<AudioState>()(
           const { task_id } = await createLectureTask();
           console.log('Created task_id:', task_id);
 
-          await uploadAudioViaWebSocket(file, task_id, (status) => {
+          await uploadAudioViaHTTP(file, task_id, (status) => {
             console.log('Progress update:', status);
             setProgressStatus(status);
           });

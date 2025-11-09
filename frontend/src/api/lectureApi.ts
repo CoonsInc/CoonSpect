@@ -7,35 +7,42 @@ export async function createLectureTask() {
   return res.data;
 }
 
-export async function uploadAudioViaWebSocket(
+export async function uploadAudioViaHTTP(
   file: File,
   taskId: number,
   onStatusChange?: (status: string) => void
 ) {
-  console.log(`[FRONT] Connecting WS for task ${taskId}`);
+  console.log(`[FRONT] Starting upload for task ${taskId}`);
   return new Promise<void>((resolve, reject) => {
     const ws = new WebSocket(`${WS_BASE_URL}/${taskId}`);
 
     ws.onopen = async () => {
-      console.log(`[FRONT] WS open for task ${taskId}, sending file ${file.name}`);
-      const reader = new FileReader();
-      reader.onload = () => {
-        const base64Data = (reader.result as string).split(',')[1];
-        console.log(`[FRONT] File ${file.name} encoded (${base64Data.length} bytes)`);
-        ws.send(JSON.stringify({
-          type: 'file',
-          filename: file.name,
-          content: base64Data,
-        }));
-      };
-      reader.readAsDataURL(file);
+      console.log(`[FRONT] WS open for task ${taskId}`);
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      try {
+        await apiClient.post(`/upload_audio/${taskId}`, formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+          onUploadProgress: (e) => {
+            const percent = Math.round((e.loaded / (e.total || 1)) * 100);
+            onStatusChange?.(`uploading ${percent}%`);
+          },
+        });
+        console.log(`[FRONT] Upload finished, waiting for STT...`);
+      } catch (err) {
+        console.error(`[FRONT] Upload failed:`, err);
+        reject(err);
+      }
     };
 
     ws.onmessage = (event) => {
       const msg = event.data;
       console.log(`[FRONT] WS message (${taskId}):`, msg);
       onStatusChange?.(msg);
-      if (msg === 'finish') {
+
+      if (msg === "finish") {
         console.log(`[FRONT] WS task ${taskId} finished`);
         ws.close();
         resolve();
@@ -47,9 +54,7 @@ export async function uploadAudioViaWebSocket(
       reject(err);
     };
 
-    ws.onclose = (e) => {
-      console.log(`[FRONT] WS closed (${taskId}), code=${e.code}, reason=${e.reason}`);
-    };
+    ws.onclose = () => console.log(`[FRONT] WS closed (${taskId})`);
   });
 }
 
