@@ -1,0 +1,41 @@
+[1mdiff --git a/frontend/src/components/molecules/UploadBox.tsx b/frontend/src/components/molecules/UploadBox.tsx[m
+[1mindex 9b445f6..dcad040 100644[m
+[1m--- a/frontend/src/components/molecules/UploadBox.tsx[m
+[1m+++ b/frontend/src/components/molecules/UploadBox.tsx[m
+[36m@@ -1,7 +1,6 @@[m
+  // components/molecules/UploadBox.tsx[m
+ import { useState, useRef, useEffect } from "react";[m
+ import { useMainStore } from "../../stores/mainStore";[m
+[31m-[m
+ import Icon from "../atoms/Icon";[m
+ import Text from "../atoms/Text";[m
+ [m
+[36m@@ -28,8 +27,6 @@[m [mfunction UploadBox({ onFileSelect }: UploadBoxProps) {[m
+             setFileName(file.name);[m
+             setAudioFile(file);[m
+             onFileSelect(file);[m
+[31m-[m
+[31m-            // Сохранение файла будет происходить при нажатии кнопки "Сгенерировать конспект"[m
+         } else {[m
+             alert("Пожалуйста, выберите аудиофайл.");[m
+         }[m
+[36m@@ -111,9 +108,6 @@[m [mfunction UploadBox({ onFileSelect }: UploadBoxProps) {[m
+                         <Text size="lg" className="text-blue-400 font-semibold mb-2">[m
+                             Сохраняем на диск...[m
+                         </Text>[m
+[31m-                        <Text size="sm" className="text-gray-400">[m
+[31m-                            Файл: {fileName}[m
+[31m-                        </Text>[m
+                     </>[m
+                 ) : fileName ? ([m
+                     <>[m
+[36m@@ -121,9 +115,6 @@[m [mfunction UploadBox({ onFileSelect }: UploadBoxProps) {[m
+                         <Text size="lg" className="text-green-400 font-semibold mb-2">[m
+                             {lastSavedPath ? 'Файл сохранен!' : 'Файл готов'}[m
+                         </Text>[m
+[31m-                        <Text size="sm" className="text-gray-300 break-all mb-2">[m
+[31m-                            {fileName}[m
+[31m-                        </Text>[m
+                         {lastSavedPath && ([m
+                             <Text size="sm" className="text-green-400 mb-1">[m
+                                 📁 Путь: {lastSavedPath}[m
