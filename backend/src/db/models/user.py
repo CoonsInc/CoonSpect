@@ -3,7 +3,6 @@ from sqlalchemy.dialects.postgresql import UUID
 import uuid
 from ..base import Base
 
-# учетная запись
 class User(Base):
     __tablename__ = "users"
 
@@ -11,4 +10,4 @@ class User(Base):
     username = Column(String, unique=True, nullable=False)
     password_hash = Column(String, nullable=False)
     profile = Column(String, nullable=True)
-    settings = Column(String, nullable=True)  # JSON позже можно сделать
+    settings = Column(String, nullable=True)  # можно хранить JSON в будущем
