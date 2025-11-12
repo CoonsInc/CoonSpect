@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../stores/authStore";
-import { Menu, LogOut, User, Upload, Home, FileText } from "lucide-react";
+import { Menu, LogOut, User, Upload, Home, FileText } from "lucide-react"; // убрать в атом Icon! 
 
 const Header: React.FC = () => {
   const navigate = useNavigate();
