@@ -1,47 +1,92 @@
-from src.celery_app import celery
-import requests
-from sqlalchemy.orm import Session
+from src.celery_app import celery_app
 from src.db.session import SessionLocal
 from src.db.models.lecture import Lecture
-from src.db.models.transcription import Transcription
-from src.config import STT_SERVICE_URL
-from sqlalchemy.exc import SQLAlchemyError
+from src.wsmanager import manager
+import aiohttp
+import asyncio
+import os
+from uuid import UUID
 
-@celery.task(bind=True, name="tasks.transcribe_lecture") # короче эту часть полностью переделать нужно будет так как у нас всё поменялось
-def transcribe_lecture(self, lecture_id: str, source: str):
-    session: Session = SessionLocal()
+@celery_app.task(bind=True)
+def transcribe_lecture(self, lecture_id: str, audio_path: str):
+    """
+    Celery задача для транскрибации аудио в текст с помощью STT сервиса.
+    """
+    db = SessionLocal()
     try:
-        lecture = session.query(Lecture).filter(Lecture.id == lecture_id).one_or_none()
+        # Получаем лекцию из базы
+        lecture = db.query(Lecture).filter(Lecture.id == UUID(lecture_id)).first()
         if not lecture:
-            return {"error": "lecture not found"}
-
-        lecture.status = "transcribing"
-        lecture.task_id = self.request.id
-        session.commit()
-
-        # Вызов STT-сервиса — отправляем JSON с ссылкой или локальным путём
-        resp = requests.post(STT_SERVICE_URL, json={"path": source}, timeout=300)
-        resp.raise_for_status()
-        data = resp.json()
-
-        if data.get("status") != "success":
-            lecture.status = "failed"
-            session.commit()
-            return {"error": "stt failed", "detail": data}
-
-        text = data["text"]
-
-        # Сохраняем транскрипт
-        tr = Transcription(lecture_id=lecture.id, text=text)
-        session.add(tr)
+            raise Exception(f"Lecture {lecture_id} not found in database")
+        
+        print(f"[STT_TASK] Starting transcription for lecture {lecture_id}")
+        
+        # Отправляем обновление статуса через WebSocket
+        asyncio.run(manager.send_message(lecture_id, "status:transcribing"))
+        
+        # Отправляем аудио в STT сервис
+        result_text = asyncio.run(send_to_stt_service(audio_path))
+        
+        if not result_text:
+            raise Exception("STT service returned empty result")
+        
+        print(f"[STT_TASK] Transcription completed for lecture {lecture_id}, text length: {len(result_text)}")
+        
+        # Сохраняем результат в файл
+        text_path = f"/tmp/lectures/{lecture_id}.txt"
+        with open(text_path, "w", encoding="utf-8") as f:
+            f.write(result_text)
+        
+        # Обновляем запись в базе данных
+        lecture.text_url = text_path
         lecture.status = "transcribed"
-        session.commit()
-        return {"status": "ok", "lecture_id": str(lecture.id)}
+        db.commit()
+        
+        # Отправляем обновление статуса
+        asyncio.run(manager.send_message(lecture_id, "status:transcribed"))
+        
+        # Запускаем следующую задачу - генерацию конспекта
+        # (Это можно добавить позже, для MVP пока оставим транскрибацию)
+        print(f"[STT_TASK] Task completed for lecture {lecture_id}")
+        
+        return {
+            "status": "success",
+            "lecture_id": lecture_id,
+            "text_path": text_path
+        }
+        
     except Exception as e:
-        session.rollback()
+        print(f"[STT_TASK] Error processing lecture {lecture_id}: {str(e)}")
+        # Обновляем статус в базе при ошибке
         if lecture:
             lecture.status = "failed"
-            session.commit()
-        raise
+            db.commit()
+            asyncio.run(manager.send_message(lecture_id, f"error:{str(e)}"))
+        raise e
     finally:
-        session.close()
+        db.close()
+        # Удаляем временный аудио файл
+        if os.path.exists(audio_path):
+            os.remove(audio_path)
+            print(f"[STT_TASK] Temporary audio file removed: {audio_path}")
+
+async def send_to_stt_service(audio_path: str) -> str:
+    """
+    Отправить аудио файл в STT сервис и получить транскрибацию.
+    """
+    try:
+        async with aiohttp.ClientSession() as session:
+            with open(audio_path, "rb") as f:
+                form = aiohttp.FormData()
+                form.add_field("file", f, filename=os.path.basename(audio_path), content_type="audio/wav")
+                
+                async with session.post("http://stt-service:8000/transcribe", data=form) as resp:
+                    if resp.status != 200:
+                        error_text = await resp.text()
+                        raise Exception(f"STT service error: {resp.status}, {error_text}")
+                    
+                    result = await resp.json()
+                    return result.get("text", "")
+    except Exception as e:
+        print(f"[STT_SERVICE] Error: {str(e)}")
+        raise e
