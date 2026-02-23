@@ -65,6 +65,9 @@ services:
       - LD_LIBRARY_PATH=/usr/local/lib/python3.10/dist-packages/nvidia/cudnn/lib/:$LD_LIBRARY_PATH
     networks:
       - coonspect-net
+    volumes:
+      - ollama_models:/root/.ollama
+      - ./llm-service/data:/app/data
 
   backend:
     build: ./backend/
@@ -116,9 +119,22 @@ services:
     networks:
       - coonspect-net
 
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: coonspect-qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - coonspect-net
+
 networks:
   coonspect-net:
     driver: bridge
 
 volumes:
   postgres_data:
+  qdrant_data:
+  ollama_models:
