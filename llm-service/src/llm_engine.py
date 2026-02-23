@@ -37,41 +37,41 @@ class LLMEngine:
                         prompt=text[:1500] 
                     )
 
-                # 1. Извлекаем вектор из ответа Ollama
-                embedding = embed_response["embedding"]
+                    embedding = embed_response["embedding"]
 
-                # 2. Ищем релевантные фрагменты через новый метод query_points
-                search_response = self.qdrant.query_points(
-                    collection_name="coon_knowledge_base",
-                    query=embedding,  # <-- В новом API аргумент называется query, а не query_vector!
-                    limit=3
-                )
+                    search_response = self.qdrant.query_points(
+                        collection_name="coon_knowledge_base",
+                        query=embedding,
+                        limit=3
+                    )
 
-                # 3. Собираем найденный текст и метаданные
-                context_parts = []
-                
-                # Обрати внимание: мы итерируемся по search_response.points
-                for hit in search_response.points:
-                    payload = hit.payload or {}
-                    
-                    # Извлекаем данные с учетом структуры LangChain
-                    chunk_text = payload.get("page_content", "")
-                    meta = payload.get("metadata", {})
-                    
-                    book_title = meta.get("book_title", "Неизвестный источник")
-                    page = meta.get("page", "?")
-                    
-                    source_info = f"{book_title} (стр. {page})"
-                    used_sources.add(source_info)
-                    
-                    context_parts.append(f"--- Источник: {source_info} ---\n{chunk_text}")
+                    context_parts = []
+                    score_threshold = 0.6
 
-                # 4. Формируем итоговую строку контекста
-                if context_parts:
-                    context_text = "Дополнительная информация из базы знаний:\n" + "\n\n".join(context_parts) + "\n\n"
+                    for hit in search_response.points:
+                        if hit.score < score_threshold:
+                            print(f"[RAG] Пропущен кусок с низким score: {hit.score:.3f}")
+                            continue
+                        
+                        payload = hit.payload or {}
+                        chunk_text = payload.get("page_content", "")
+                        meta = payload.get("metadata", {})
+                        
+                        book_title = meta.get("book_title", "Неизвестный источник")
+                        page = meta.get("page", "?")
+                        
+                        source_info = f"{book_title} (стр. {page})"
+                        used_sources.add(source_info)
+                        
+                        context_parts.append(f"--- Источник: {source_info} (score: {hit.score:.2f}) ---\n{chunk_text}")
 
+                    if context_parts:
+                        context_text = "Дополнительная информация из базы знаний:\n" + "\n\n".join(context_parts) + "\n\n"
+                    else:
+                        print("[RAG] Релевантных данных в базе не найдено.")
             except Exception as rag_e:
                 print(f"[RAG Warning] Ошибка поиска контекста: {rag_e}")
+            
             print("контекст:\n---\n", context_text, "\n---\n")
             prompt = f"{self.prompt_tmp}\n\n[ЗАПРОС ПОЛЬЗОВАТЕЛЯ]:\n{text}\n\n[НАЙДЕННЫЙ КОНТЕКСТ]:\n{context_text}"
             
