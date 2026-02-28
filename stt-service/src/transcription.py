@@ -2,13 +2,19 @@ import os
 import whisperx
 import torch
 import tempfile
-import subprocess
 from pathlib import Path
+
+_original_load = torch.load
+def _patched_load(*args, **kwargs):
+    kwargs['weights_only'] = False
+    return _original_load(*args, **kwargs)
+torch.load = _patched_load
 
 class STTEngine:
     def __init__(self, model_size="turbo"):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.compute_type = "float16" if torch.cuda.is_available() else "int8"
+        
         print(f"🎯 STT инициализирован на устройстве: {self.device}")
         print(f"⏳ Загрузка {model_size}")
         self.model = whisperx.load_model(
