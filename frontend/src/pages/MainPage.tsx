@@ -37,6 +37,16 @@ const MainPage: FC = () => {
     alert("Конспект успешно сохранён!");
   };
 
+  const handleAddToFiles = (newText: string, title: string) => {
+    console.log(`📦 Лекция "${title}" отправлена в файлы. Длина:`, newText.length);
+    alert(`Лекция "${title}" успешно сохранена в ваши файлы!`);
+    
+    // TODO: В будущем здесь будет:
+    // 1. Отправка на бэкенд или сохранение в глобальный стор
+    // 2. Очистка текущего состояния
+    // 3. Редирект пользователя на страницу каталога: navigate('/files')
+  };
+
   const renderContent = () => {
     switch (appState) {
       case "upload":
@@ -63,6 +73,7 @@ const MainPage: FC = () => {
             <EditorSection
               initialText={processedText}
               onSave={handleSave}
+              onAddToFiles={handleAddToFiles}
               onBack={() => setAppState("upload")}
             />
             <HowItWorksSection />

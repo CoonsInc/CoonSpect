@@ -6,6 +6,7 @@ import LoginPage from '../pages/LoginPage';
 import MainPage from '../pages/MainPage';
 import FilesPage from '../pages/FilesPage';
 import ProfilePage from '../pages/ProfilePage';
+import LecturesPage from '../pages/LecturesPage';
 
 // const LoginRoute = () => <LoginPage />;
 
@@ -41,6 +42,7 @@ const AppRoutes = () => {
         path="/files" 
         element={user ? <FilesPage /> : <Navigate to="/login" replace />} 
       />
+      <Route path="/lectures" element={<LecturesPage />} />
       <Route 
         path="/profile" 
         element={user ? <ProfilePage /> : <Navigate to="/login" replace />} 
