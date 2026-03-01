@@ -4,9 +4,8 @@ import { useAppStore, useAuthStore } from "../stores";
 import { useEffect } from 'react';
 import LoginPage from '../pages/LoginPage';
 import MainPage from '../pages/MainPage';
-import FilesPage from '../pages/LecturesPage';
-import ProfilePage from '../pages/ProfilePage';
 import LecturesPage from '../pages/LecturesPage';
+import ProfilePage from '../pages/ProfilePage';
 
 // const LoginRoute = () => <LoginPage />;
 
@@ -40,7 +39,7 @@ const AppRoutes = () => {
       <Route path="/upload" element={<MainPage />} />
       <Route 
         path="/files" 
-        element={user ? <FilesPage /> : <Navigate to="/login" replace />} 
+        element={user ? <LecturesPage /> : <Navigate to="/login" replace />} 
       />
       <Route path="/lectures" element={<LecturesPage />} />
       <Route 
