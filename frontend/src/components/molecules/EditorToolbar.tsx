@@ -5,11 +5,12 @@ import Icon from "../atoms/Icon";
 
 interface EditorToolbarProps {
   onFormat: (type: "bold" | "italic" | "list" | "heading" | "quote" | "link") => void;
+  onAddToFiles?: () => void;
   onSave?: () => void;
   onCopy?: () => void;
 }
 
-const EditorToolbar: React.FC<EditorToolbarProps> = ({ onFormat, onSave, onCopy }) => {
+const EditorToolbar: React.FC<EditorToolbarProps> = ({ onFormat, onSave, onCopy, onAddToFiles }) => {
   const formatButtons = [
     { icon: "Bold", action: "bold", title: "Жирный текст" },
     { icon: "Italic", action: "italic", title: "Курсив" },
@@ -20,6 +21,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({ onFormat, onSave, onCopy 
   ] as const;
 
   const actionButtons = [
+    { icon: "FolderPlus", action: onAddToFiles, show: onAddToFiles },
     { icon: "Copy", action: onCopy, show: onCopy },
     { icon: "Save", action: onSave, show: onSave },
   ] as const;
