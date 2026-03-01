@@ -18,10 +18,10 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt --timeout 0
 
-RUN python3 -c "import whisperx; \
-model = whisperx.load_model('turbo', device='cpu', compute_type='int8'); \
-print('Модель загружена'); \
-"
+# RUN python3 -c "import whisperx; \
+# model = whisperx.load_model('turbo', device='cpu', compute_type='int8'); \
+# print('Модель загружена'); \
+# "
 ENV LD_LIBRARY_PATH=/usr/local/lib/python3.10/dist-packages/nvidia/cudnn/lib/:$LD_LIBRARY_PATH
 
 COPY src/ /app
