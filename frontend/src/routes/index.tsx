@@ -4,7 +4,7 @@ import { useAppStore, useAuthStore } from "../stores";
 import { useEffect } from 'react';
 import LoginPage from '../pages/LoginPage';
 import MainPage from '../pages/MainPage';
-import FilesPage from '../pages/FilesPage';
+import FilesPage from '../pages/LecturesPage';
 import ProfilePage from '../pages/ProfilePage';
 import LecturesPage from '../pages/LecturesPage';
 
