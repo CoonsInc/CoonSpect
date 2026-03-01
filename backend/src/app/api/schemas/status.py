@@ -17,4 +17,3 @@ class Status(BaseModel):
     @classmethod
     def error(cls, msg: Optional[str] = None) -> "Status":
         return cls(status=StatusType.ERROR, msg=msg)
-    

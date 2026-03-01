@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
+from src.app.api.routers.auth import router as auth_router
 from src.app.api.routers.tasks import router as tasks_router
 from src.app.api.routers.users import router as user_router
 from src.app.api.routers.lectures import router as lecture_router
@@ -24,6 +25,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+app.include_router(auth_router)
 app.include_router(tasks_router)
 app.include_router(user_router)
 app.include_router(lecture_router)

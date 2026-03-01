@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from fastapi import WebSocket, WebSocketDisconnect, status
 from fastapi import UploadFile, File
-import uuid
+from uuid import UUID, uuid4
 import tempfile
 from src.app.api.schemas.status import Status
 
@@ -11,30 +11,30 @@ from src.app.db.redis import redis_sync as r
 
 router = APIRouter(prefix="/task", tags=["tasks"])
 
-@router.get("/create")
-def create_task():
+@router.get("/create", response_model=Status)
+async def create_task():
     """
     Создать задачу
     """
-    task_id = str(uuid.uuid4())
+    task_id = uuid4()
     r.set(f"task:{task_id}", "uploading")
     print(f"[TASK/CREATE] Created new task_id={task_id}")
     return Status.success(task_id)
 
-@router.get("/correct/{task_id}")
-async def check_task_id(task_id: str):
+@router.get("/correct/{task_id}", response_model=Status)
+async def check_task_id(task_id: UUID):
     """
     Проверить что задача существует
     """
     if r.exists(f"task_status:{task_id}"):
-        print(f"[TASK/CORRECT] Correct task_id={task_id}")
+        print(f"[TASK/correct] Correct task_id={task_id}")
         return Status.success()
     
-    print(f"[TASK/CORRECT] Invalid task_id={task_id}")
-    raise HTTPException(status_code=400, detail="Invalid task_id")
+    print(f"[TASK/correct] Incorrect task_id={task_id}")
+    raise HTTPException(status_code=400, detail="Incorrect task_id")
 
-@router.post("/start/{task_id}")
-async def start(task_id: str, file: UploadFile = File(...)):
+@router.post("/start/{task_id}", response_model=Status)
+async def start(task_id: UUID, file: UploadFile = File(...)):
     """
     Запустить задачу
     """
@@ -62,7 +62,7 @@ async def start(task_id: str, file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.websocket("/ws/{task_id}")
-async def websocket_endpoint(websocket: WebSocket, task_id: str):
+async def websocket_endpoint(websocket: WebSocket, task_id: UUID):
     """
     Отслеживание состояния задачи
     """

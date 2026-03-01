@@ -9,7 +9,11 @@ interface LoginFormProps {
   isLoading?: boolean;
 }
 
-const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onRegister, isLoading = false }) => {
+const LoginForm: React.FC<LoginFormProps> = ({
+  onLogin,
+  onRegister,
+  isLoading = false
+}) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isRegister, setIsRegister] = useState(false);
@@ -18,6 +22,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onRegister, isLoading = 
     const savedUsername = localStorage.getItem('username');
     const savedPassword = localStorage.getItem('password');
     const savedIsRegister = localStorage.getItem('isRegister');
+
     if (savedUsername) setUsername(savedUsername);
     if (savedPassword) setPassword(savedPassword);
     if (savedIsRegister) setIsRegister(JSON.parse(savedIsRegister));
@@ -56,11 +61,11 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onRegister, isLoading = 
   };
 
   return (
-    <div className="bg-bg-tertiary p-6 rounded-lg border border-border max-w-md w-full">
-      <Text size="lg" className="text-text-primary font-semibold mb-4 text-center">
+    <div className="bg-[var(--color-bg-secondary)] p-6 rounded-lg border border-[var(--color-border)] max-w-md w-full">
+      <Text size="lg" className="text-[var(--color-text-primary)] font-semibold mb-4 text-center">
         {isRegister ? 'Регистрация' : 'Вход в систему'}
       </Text>
-      
+
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input
           type="text"
@@ -72,7 +77,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onRegister, isLoading = 
           }}
           disabled={isLoading}
         />
-        
+
         <Input
           type="password"
           placeholder="Пароль"
@@ -95,7 +100,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onRegister, isLoading = 
       </form>
 
       <div className="mt-4 text-center">
-        <Text size="sm" className="text-text-secondary">
+        <Text size="sm" className="text-[var(--color-text-secondary)]">
           {isRegister ? 'Уже есть аккаунт?' : 'Нет аккаунта?'}{' '}
           <button
             type="button"
@@ -104,7 +109,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onRegister, isLoading = 
               setIsRegister(newIsRegister);
               localStorage.setItem('isRegister', JSON.stringify(newIsRegister));
             }}
-            className="text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 underline transition-colors"
+            className="text-[var(--color-text-purple)] hover:opacity-80 underline transition-opacity"
           >
             {isRegister ? 'Войти' : 'Зарегистрироваться'}
           </button>

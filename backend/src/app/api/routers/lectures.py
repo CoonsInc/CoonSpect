@@ -5,10 +5,10 @@ from src.app.db.session import get_db
 from src.app.db.models.lecture import Lecture
 from src.app.api.schemas.lecture import LectureRead
 
-router = APIRouter(prefix="/api/lectures", tags=["lectures"])
+router = APIRouter(prefix="/lectures", tags=["lectures"])
 
 @router.get("/{lecture_id}", response_model=LectureRead)
-def get_result(lecture_id: UUID, db: Session = Depends(get_db)):
+async def get_result(lecture_id: UUID, db: Session = Depends(get_db)):
     """
     Получить результат (ссылку на текстовый файл или готовый конспект).
     """

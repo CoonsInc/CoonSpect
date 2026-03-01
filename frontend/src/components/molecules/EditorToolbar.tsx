@@ -1,87 +1,63 @@
+// components/molecules/EditorToolbar.tsx
 import React from "react";
 import Button from "../atoms/Button";
 import Icon from "../atoms/Icon";
 
 interface EditorToolbarProps {
-    onFormat: (type: 'bold' | 'italic' | 'list' | 'heading' | 'quote' | 'link') => void;
-    onSave?: () => void;
-    onCopy?: () => void;
-    onEdit?: () => void;
+  onFormat: (type: "bold" | "italic" | "list" | "heading" | "quote" | "link") => void;
+  onSave?: () => void;
+  onCopy?: () => void;
 }
 
-const EditorToolbar: React.FC<EditorToolbarProps> = ({ onFormat, onSave, onCopy }) => (
-    
-    <div className="flex items-center justify-between gap-4 mb-6 p-4 bg-[#1E1F3A] rounded-lg">
+const EditorToolbar: React.FC<EditorToolbarProps> = ({ onFormat, onSave, onCopy }) => {
+  const formatButtons = [
+    { icon: "Bold", action: "bold", title: "Жирный текст" },
+    { icon: "Italic", action: "italic", title: "Курсив" },
+    { icon: "List", action: "list", title: "Маркированный список" },
+    { icon: "Heading", action: "heading", title: "Заголовок" },
+    { icon: "Quote", action: "quote", title: "Цитата" },
+    { icon: "Link", action: "link", title: "Ссылка" },
+  ] as const;
 
-        <div className="flex items-center gap-1">
-            <Button 
-                variant="secondary" 
-                size="sm"
-                onClick={() => onFormat('bold')}
-                title="Жирный текст"
-            >
-                <Icon name="Bold" className="w-4 h-4" />
-            </Button>
-            
-            <Button 
-                variant="secondary" 
-                size="sm"
-                onClick={() => onFormat('italic')}
-                title="Курсив"
-            >
-                <Icon name="Italic" className="w-4 h-4" />
-            </Button>
-            
-            <Button 
-                variant="secondary" 
-                size="sm"
-                onClick={() => onFormat('list')}
-                title="Маркированный список"
-            >
-                <Icon name="List" className="w-4 h-4" />
-            </Button>
-            
-            <Button 
-                variant="secondary" 
-                size="sm"
-                onClick={() => onFormat('heading')}
-                title="Заголовок"
-            >
-                <Icon name="Heading" className="w-4 h-4" />
-            </Button>
-            
-            <Button 
-                variant="secondary" 
-                size="sm"
-                onClick={() => onFormat('quote')}
-                title="Цитата"
-            >
-                <Icon name="Quote" className="w-4 h-4" />
-            </Button>
-            
-            <Button 
-                variant="secondary" 
-                size="sm"
-                onClick={() => onFormat('link')}
-                title="Ссылка"
-            >
-                <Icon name="Link" className="w-4 h-4" />
-            </Button>
-        </div>
+  const actionButtons = [
+    { icon: "Copy", action: onCopy, show: onCopy },
+    { icon: "Save", action: onSave, show: onSave },
+  ] as const;
 
-        <div className="flex items-center gap-1">
-            {onCopy && (
-                <Button onClick={onCopy} variant="primary" size="sm">
-                    <Icon name="Copy" className="w-4 h-4" />
-                </Button>
-            )}
-            {onSave && (
-                <Button onClick={onSave} variant="primary" size="sm">
-                    <Icon name="Save" className="w-4 h-4" />
-                </Button>
-            )}
-        </div>
+  return (
+    <div className="flex items-center justify-between gap-4 mb-6 p-4 bg-[var(--color-bg-secondary)] rounded-lg">
+      <div className="flex items-center gap-1">
+        {formatButtons.map(({ icon, action, title }) => (
+          <Button
+            key={action}
+            variant="secondary"
+            size="sm"
+            onClick={() => onFormat(action)}
+            title={title}
+          >
+            <Icon name={icon} className="w-4 h-4" />
+          </Button>
+        ))}
+      </div>
+
+      <div className="flex items-center gap-1">
+        {actionButtons.map(
+          ({ icon, action, show }) =>
+            show && (
+              <Button
+                key={icon}
+                onClick={action}
+                variant="outline"
+                size="sm"
+                className="border-[var(--color-text-purple)] text-[var(--color-text-purple)] hover:bg-[var(--color-text-purple)] hover:text-white"
+              >
+                <Icon name={icon} className="w-4 h-4" />
+              </Button>
+            )
+        )}
+      </div>
     </div>
-);
+  );
+};
 
 export default EditorToolbar;
