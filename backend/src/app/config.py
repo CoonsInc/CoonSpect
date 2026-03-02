@@ -1,12 +1,20 @@
 import os
 from pydantic_settings import BaseSettings
 
-# Redis configuration
-REDIS_HOST = os.getenv('REDIS_HOST', 'redis')
-REDIS_PORT = int(os.getenv('REDIS_PORT', 6379))
+# S3
+S3_HOST = os.getenv('S3_HOST', 'localhost')
+S3_PORT = int(os.getenv('S3_PORT', '9000'))
+S3_ACCESS_KEY = os.getenv('S3_ACCESS_KEY', 'admin')
+S3_SECRET_KEY = os.getenv('S3_SECRET_KEY', 'password')
+S3_RAW_LECTURES_BUCKET = os.getenv('S3_RAW_LECTURES_BUCKET', 'lectures')
+S3_URL = os.getenv('S3_URL', f'http://{S3_HOST}:{S3_PORT}')
+
+# Redis
+REDIS_HOST = os.getenv('REDIS_HOST', 'localhost')
+REDIS_PORT = int(os.getenv('REDIS_PORT', '6379'))
 REDIS_URL = os.getenv('REDIS_URL', f'redis://{REDIS_HOST}:{REDIS_PORT}')
 
-# Database
+# Postgres
 POSTGRES_HOST = os.getenv('POSTGRES_HOST', 'localhost')
 POSTGRES_PORT = os.getenv('POSTGRES_PORT', '5432')
 POSTGRES_USER = os.getenv('POSTGRES_USER', 'user')

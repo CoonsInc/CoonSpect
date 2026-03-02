@@ -9,19 +9,29 @@ from src.app.api.routers.users import router as user_router
 from src.app.api.routers.lectures import router as lecture_router
 from src.app.api.schemas.status import Status
 from src.app.celery_app import ws_event_listener
+from src.app.db.s3 import session
+from src.app.db.redis import redis_sync, redis_async
+from src.app.wsmanager import manager
+from src.app.db.s3 import create_buckets_if_not_exists
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    await create_buckets_if_not_exists()
     listener_task = asyncio.create_task(ws_event_listener())
     print("✅ WebSocket event listener started")
+
     yield
-    # Завершаем задачу при остановке приложения
+
+    await session.close()
+    redis_sync.close()
+    await redis_async.close()
     listener_task.cancel()
     try:
         await listener_task
     except asyncio.CancelledError:
         pass
-    print("🛑 WebSocket event listener stopped")
+    for task_id in manager.active_connections.keys():
+        manager.disconnect(task_id)
 
 app = FastAPI(lifespan=lifespan)
 

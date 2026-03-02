@@ -76,16 +76,6 @@ def stt_task(self, payload: dict):
     return payload
 
 @celery.task(bind = True)
-def stt_task_test(self, payload: dict):
-    """
-    send audio file to stt service\n
-    payload need "task_id" and "audio_filepath"\n
-    writes "data" with stt response
-    """
-    payload["data"] = "hello world"
-    return payload
-
-@celery.task(bind = True)
 def llm_task(self, payload: dict):
     """
     send audio file to stt service\n
@@ -103,15 +93,6 @@ def llm_task(self, payload: dict):
         exit_chain(self, payload["task_id"], f"Error with llm request, status {response.status_code}")
 
     payload["data"] = response.json()["summary"]
-    return payload
-
-@celery.task(bind = True)
-def llm_task_test(self, payload: dict):
-    """
-    send audio file to stt service\n
-    payload need "task_id" and "data"\n
-    writes "data" with llm response
-    """
     return payload
 
 @celery.task()
@@ -185,6 +166,29 @@ def run_audio_pipeline(task_id: str, user_uuid: uuid.UUID, audio_filepath: str):
         finish_task.s()
     ).apply_async()
 
+
+
+
+
+@celery.task(bind = True)
+def stt_task_test(self, payload: dict):
+    """
+    send audio file to stt service\n
+    payload need "task_id" and "audio_filepath"\n
+    writes "data" with stt response
+    """
+    payload["data"] = "hello world"
+    return payload
+
+@celery.task(bind = True)
+def llm_task_test(self, payload: dict):
+    """
+    send audio file to stt service\n
+    payload need "task_id" and "data"\n
+    writes "data" with llm response
+    """
+    return payload
+
 def run_audio_pipeline_test(task_id: str, audio_filepath: str):
     if not manager.contains(task_id):
         raise Exception(f"task_id {task_id} not found")
@@ -212,8 +216,8 @@ def run_audio_pipeline_test(task_id: str, audio_filepath: str):
     }
 
     chain(
-        stt_task.s(initial_payload),
-        llm_task.s(),
+        stt_task_test.s(initial_payload),
+        llm_task_test.s(),
         upload_lecture_task.s(),
         finish_task.s()
     ).apply_async()

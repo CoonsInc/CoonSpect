@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from fastapi import WebSocket, WebSocketDisconnect, status
-from fastapi import UploadFile, File
+from fastapi import UploadFile, File, Depends
 from uuid import UUID, uuid4
 import tempfile
 from src.app.api.schemas.status import Status
@@ -8,44 +8,34 @@ from src.app.api.schemas.status import Status
 from src.app.wsmanager import manager
 from src.app.celery_app import run_audio_pipeline, run_audio_pipeline_test
 from src.app.db.redis import redis_sync as r
+from src.app.api.tools import access_token_request
+from src.app.api.schemas.user import UserRead
+from src.app.api.tools import decode_token
+from src.app.db.s3 import get_s3_client
+from src.app.config import S3_RAW_LECTURES_BUCKET
 
 router = APIRouter(prefix="/task", tags=["tasks"])
 
-@router.get("/create", response_model=Status)
-async def create_task():
-    """
-    Создать задачу
-    """
-    task_id = uuid4()
-    r.set(f"task:{task_id}", "uploading")
-    print(f"[TASK/CREATE] Created new task_id={task_id}")
-    return Status.success(task_id)
-
-@router.get("/correct/{task_id}", response_model=Status)
-async def check_task_id(task_id: UUID):
-    """
-    Проверить что задача существует
-    """
-    if r.exists(f"task_status:{task_id}"):
-        print(f"[TASK/correct] Correct task_id={task_id}")
-        return Status.success()
-    
-    print(f"[TASK/correct] Incorrect task_id={task_id}")
-    raise HTTPException(status_code=400, detail="Incorrect task_id")
-
 @router.post("/start/{task_id}", response_model=Status)
-async def start(task_id: UUID, file: UploadFile = File(...)):
-    """
-    Запустить задачу
-    """
-    print(f"[TASK/START] Task {task_id}, got file {file.filename}")
+async def start(
+    file: UploadFile = File(...),
+    user: UserRead = Depends(access_token_request),
+    s3 = Depends(get_s3_client),
+):
+    task_id = uuid4()
+
+    r.set(f"user:{user.id}:task:{task_id}", "uploading")
     
-    if not r.exists(f"task:{task_id}"):
-        raise HTTPException(status_code=400, detail="Invalid task_id")
+    await s3.put_object(
+        Bucket = S3_RAW_LECTURES_BUCKET,
+        Key = f"{file.filename}",
+        Body = await file.read(),
+        ContentType = file.content_type or "application/octet-stream",
+    )
     
     tmp_path = None
     try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
+        with tempfile.NamedTemporaryFile(delete=False) as tmp:
             content = await file.read()
             tmp.write(content)
             tmp_path = tmp.name
@@ -77,6 +67,10 @@ async def websocket_endpoint(websocket: WebSocket, task_id: UUID):
         return
 
     await manager.connect(websocket, task_id)
+
+    access_token = await websocket.receive_text()
+    decode_token(access_token, "access")
+
     await manager.send_message(task_id, r.get(f"task:{task_id}"))
     
     try:
