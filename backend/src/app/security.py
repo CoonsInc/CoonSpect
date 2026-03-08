@@ -32,7 +32,7 @@ class Token:
             "exp": int(self.expire.timestamp()),
             "type": self.token_type.value
         }
-        return jwt.encode(payload, settings.secret_key, algorithms=[settings.algorithm])
+        return jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
     
     @classmethod
     def from_type(cls, uuid: UUID, token_type: TokenType) -> "Token":
@@ -42,7 +42,7 @@ class Token:
                 expire += timedelta(minutes=settings.access_token_expire_minutes)
             case cls.TokenType.REFRESH:
                 expire += timedelta(days=settings.refresh_token_expire_days)
-        cls(uuid, expire, token_type)
+        return cls(uuid, expire, token_type)
 
     @classmethod
     def decode(cls, encoded_token: str) -> "Token":

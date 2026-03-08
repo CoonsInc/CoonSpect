@@ -1,6 +1,6 @@
 import asyncio
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.responses import JSONResponse
 
 from src.app.api.routers.auth import router as auth_router
@@ -8,21 +8,21 @@ from src.app.api.routers.tasks import router as tasks_router
 from src.app.api.routers.users import router as user_router
 from src.app.api.routers.lectures import router as lecture_router
 from src.app.api.schemas.status import Status
-from src.app.celery_app import ws_event_listener
-from src.app.db.s3 import session
-from src.app.db.redis import redis_sync, redis_async
+from src.app.clients.celery import ws_event_listener
+from src.app.clients.redis import redis_sync, redis_async
 from src.app.wsmanager import manager
-from src.app.db.s3 import create_buckets_if_not_exists
+#from src.app.db.s3 import session, create_buckets_if_not_exists, get_s3_client
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await create_buckets_if_not_exists()
+    # await create_buckets_if_not_exists()
+    # print("[LIFESPAN] ✅ Buckets in storage created")
     listener_task = asyncio.create_task(ws_event_listener())
-    print("✅ WebSocket event listener started")
+    print("[LIFESPAN] ✅ WebSocket event listener started")
 
     yield
 
-    await session.close()
+    #await session.close()
     redis_sync.close()
     await redis_async.close()
     listener_task.cancel()

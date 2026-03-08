@@ -1,24 +1,26 @@
-from celery import Celery, chain
+from celery import Celery
 from celery.signals import task_prerun
 import json
 import os
 import requests
-from pathlib import Path
-import uuid
+import time
 
-from src.app.db.models.lecture import Lecture
-from src.app.db.models.user import User
-from src.app.db.session import SessionLocal
-from src.app.wsmanager import manager
-from src.app.db.redis import redis_sync, redis_async
 import src.app.config as config
+from src.app.clients.sql.session import SessionLocal
+from src.app.clients.sql.models import Lecture
+from src.app.wsmanager import manager
+from src.app.clients.redis import redis_sync
 
 TASK_MESSAGES = {
     "src.app.celery_app.stt_task": "stt",
     "src.app.celery_app.rag_task": "rag",
     "src.app.celery_app.llm_task": "llm",
     "src.app.celery_app.upload_lecture_task": "saving",
-    "src.app.celery_app.finish_task": "finish"
+    "src.app.celery_app.finish_task": "finish",
+    
+    "src.app.celery_app.stt_task_test": "stt",
+    "src.app.celery_app.rag_task_test": "rag",
+    "src.app.celery_app.llm_task_test": "llm"
 }
 
 DEFAULT_MESSAGE = "unknown"
@@ -112,12 +114,6 @@ def upload_lecture_task(payload: dict):
         db.add(lecture)
         db.commit()
         db.refresh(lecture)
-
-        text_path = Path(f"{lecture.id}.txt").resolve()
-        with open(text_path, "w") as f:
-            f.write(payload["data"])
-        
-        lecture.audio_url = str(text_path)
         db.commit()
 
         lecture_id = lecture.id
@@ -134,39 +130,6 @@ def finish_task(payload: dict):
     send_msg(payload["task_id"], payload["data"])
     manager.disconnect(payload["task_id"])
 
-@task_prerun.connect
-def track_task(task_id=None, task=None, sender=None, **kwargs):
-    status = TASK_MESSAGES.get(sender.name, DEFAULT_MESSAGE)
-    task_id = kwargs["args"][0]["task_id"]
-    redis_sync.set(f"task:{task_id}", status)
-    send_msg(kwargs["args"][0]["task_id"], status)
-
-def run_audio_pipeline(task_id: str, user_uuid: uuid.UUID, audio_filepath: str):
-    if not manager.contains(task_id):
-        raise Exception(f"task_id {task_id} not found")
-    
-    with SessionLocal() as db:
-        db.query(User).filter()
-
-    if not os.path.exists(audio_filepath):
-        raise Exception(f"File {audio_filepath} not found")
-
-    print(f"[AUDIO PIPELINE] task_id: {task_id}; user_uuid {user_uuid}; audio_filepath {audio_filepath}")
-
-    initial_payload = {
-        "task_id": task_id,
-        "audio_filepath": audio_filepath,
-        "user_uuid": user_uuid
-    }
-
-    chain(
-        stt_task.s(initial_payload),
-        llm_task.s(),
-        upload_lecture_task.s(),
-        finish_task.s()
-    ).apply_async()
-
-
 
 
 
@@ -177,6 +140,7 @@ def stt_task_test(self, payload: dict):
     payload need "task_id" and "audio_filepath"\n
     writes "data" with stt response
     """
+    time.sleep(2)
     payload["data"] = "hello world"
     return payload
 
@@ -187,47 +151,14 @@ def llm_task_test(self, payload: dict):
     payload need "task_id" and "data"\n
     writes "data" with llm response
     """
+    time.sleep(2)
     return payload
 
-def run_audio_pipeline_test(task_id: str, audio_filepath: str):
-    if not manager.contains(task_id):
-        raise Exception(f"task_id {task_id} not found")
-    
-    user = User(
-        id = uuid.uuid4(),
-        username = str(uuid.uuid4()),
-        password_hash = str(uuid.uuid4())
-    )
 
-    with SessionLocal() as db:
-        db.add(user)
-        db.commit()
-        db.refresh(user)
+@task_prerun.connect
+def track_task(task_id=None, task=None, sender=None, **kwargs):
+    status = TASK_MESSAGES.get(sender.name, DEFAULT_MESSAGE)
+    task_id = kwargs["args"][0]["task_id"]
+    redis_sync.set(f"task:{task_id}", status)
+    send_msg(task_id, status)
 
-    if not os.path.exists(audio_filepath):
-        raise Exception(f"File {audio_filepath} not found")
-
-    print(f"[AUDIO PIPELINE] task_id: {task_id}; user_uuid {str(user.id)}; audio_filepath {audio_filepath}")
-
-    initial_payload = {
-        "task_id": task_id,
-        "audio_filepath": audio_filepath,
-        "user_uuid": user.id
-    }
-
-    chain(
-        stt_task_test.s(initial_payload),
-        llm_task_test.s(),
-        upload_lecture_task.s(),
-        finish_task.s()
-    ).apply_async()
-
-async def ws_event_listener():
-    pubsub = redis_async.pubsub()
-    await pubsub.subscribe("ws_events")
-    async for message in pubsub.listen():
-        print(f"Redis received: {message}")
-        if message["type"] == "message":
-            data = json.loads(message["data"])
-            print(f"Forwarding to WS: {data}")
-            await manager.send_message(data["task_id"], data["message"])

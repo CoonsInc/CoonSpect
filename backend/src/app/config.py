@@ -1,6 +1,9 @@
 import os
 from pydantic_settings import BaseSettings
 
+# test or prod
+BACKEND_MODE = os.getenv('BACKEND_MODE', 'test')
+
 # S3
 S3_HOST = os.getenv('S3_HOST', 'localhost')
 S3_PORT = int(os.getenv('S3_PORT', '9000'))
