@@ -1,17 +1,31 @@
-import { Upload, Edit3, Loader2, Check, Download, FileX, FileAudio, Trash2, ArrowLeft,
-  Bold, Italic, List, Heading, Quote, Link, Save, Copy
- } from "lucide-react";
+import {
+  Upload, Edit3, Loader2, Check, Download, FileX, FileAudio, Trash2, ArrowLeft,
+  Bold, Italic, List, Heading, Quote, Link, Save, Copy,
+  LogOut, FileText, Home, Sun, Moon, Menu, User, LogIn,
+  Brain, Languages, ScanEye, Network, Clock, FolderPlus, Plus
+} from "lucide-react";
+
+export type IconName = 
+  | "Upload" | "Edit3" | "Loader2" | "Check" | "Download" | "FileX" | "FileAudio" | "Trash2" | "ArrowLeft"
+  | "Bold" | "Italic" | "List" | "Heading" | "Quote" | "Link" | "Save" | "Copy"
+  | "LogOut" | "FileText" | "Home" | "Sun" | "Moon" | "Menu" | "User" | "LogIn"
+  | "Brain" | "Languages" | "ScanEye" | "Network" | "Clock" | "FolderPlus" | "Plus";
 
 interface IconProps {
-  name: "Upload" | "Edit3" | "Loader2" | "Check" | "Download" | "FileX" | "FileAudio" | "Trash2" | "ArrowLeft"
-   | "Bold" | "Italic" | "List" | "Heading" | "Quote" | "Link" | "Save" | "Copy" | "ArrowLeft";
+  name: IconName;
   className?: string;
 }
 
 const Icon: React.FC<IconProps> = ({ name, className = "w-5 h-5" }) => {
-  const icons = { Upload, Edit3, Loader2, Check, Download, FileX, FileAudio, Trash2, ArrowLeft, Bold, Italic, List, Heading, Quote, Link, Save, Copy };
+  const icons: Record<IconName, React.ElementType> = {
+    Upload, Edit3, Loader2, Check, Download, FileX, FileAudio, Trash2, ArrowLeft,
+    Bold, Italic, List, Heading, Quote, Link, Save, Copy,
+    LogOut, FileText, Home, Sun, Moon, Menu, User, LogIn,
+    Brain, Languages, ScanEye, Network, Clock, FolderPlus, Plus
+  };
+
   const IconComponent = icons[name];
-  return (<IconComponent className={className} />);
+  return <IconComponent className={className} />;
 };
 
 export default Icon;
