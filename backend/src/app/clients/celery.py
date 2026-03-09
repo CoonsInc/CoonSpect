@@ -47,7 +47,9 @@ async def ws_event_listener():
         print(f"Redis received: {message}")
         if message["type"] == "message":
             data = json.loads(message["data"])
-            print(f"!!! Forwarding to WS: {data}")
-            await manager.send_message(data["task_id"], data["message"])
+            if manager.contains(data["user_id"]):
+                await manager.send_message(data["user_id"], data["message"])
+            else:
+                print("!!! wtf is this message")
 
             

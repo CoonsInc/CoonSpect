@@ -2,15 +2,15 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 
-from src.app.db.redis import redis_sync as redis
+from src.app.clients.redis import redis_sync as redis
 from src.app.api.schemas.user import UserCreate
 from src.app.api.schemas.token import RefreshToken, RefreshAccessTokens
 from src.app.api.schemas.status import Status
-from src.app.db.session import get_db
+from src.app.clients.sql.session import get_db
 from src.app.api.tools import decode_token, generate_tokens
-from src.app.security import Token, hash_password, verify_password
+from src.app.security import TokenType, hash_password, verify_password
 
-from src.app.db.models import User
+from src.app.clients.sql.models import User
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -42,7 +42,7 @@ async def login(content: UserCreate, db: Session = Depends(get_db)):
 
 @router.post("/refresh", response_model=RefreshAccessTokens)
 async def refresh(content: RefreshToken):
-    refresh_token = decode_token(content.refresh_token, Token.TokenType.REFRESH)
+    refresh_token = decode_token(content.refresh_token, TokenType.REFRESH)
     
     blacklist_ttl = max((refresh_token.expire - datetime.now(timezone.utc)).seconds, 1)
     
@@ -52,8 +52,8 @@ async def refresh(content: RefreshToken):
 
 @router.post("/logout", response_model=Status)
 async def logout(content: RefreshAccessTokens):
-    access_token = decode_token(content.access_token, Token.TokenType.ACCESS)
-    refresh_token = decode_token(content.refresh_token, Token.TokenType.REFRESH)
+    access_token = decode_token(content.access_token, TokenType.ACCESS)
+    refresh_token = decode_token(content.refresh_token, TokenType.REFRESH)
 
     blacklist_access_ttl = max((access_token.expire - datetime.now(timezone.utc)).seconds, 1)
     blacklist_refresh_ttl = max((refresh_token.expire - datetime.now(timezone.utc)).seconds, 1)

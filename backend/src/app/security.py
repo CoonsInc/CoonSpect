@@ -6,7 +6,7 @@ from typing import Any
 from enum import Enum
 
 from src.app.config import settings
-from src.app.db.redis import redis_sync as redis
+from src.app.clients.redis import redis_sync as redis
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
@@ -16,11 +16,11 @@ def verify_password(plain: str, hashed: str) -> bool:
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
-class Token:
-    class TokenType(str, Enum):
+class TokenType(str, Enum):
         ACCESS = "access"
         REFRESH = "refresh"
 
+class Token:
     def __init__(self, uuid: UUID, expire: datetime, token_type: TokenType):
         self.uuid = uuid
         self.expire = expire
@@ -38,9 +38,9 @@ class Token:
     def from_type(cls, uuid: UUID, token_type: TokenType) -> "Token":
         expire = datetime.now(timezone.utc)
         match token_type:
-            case cls.TokenType.ACCESS:
+            case TokenType.ACCESS:
                 expire += timedelta(minutes=settings.access_token_expire_minutes)
-            case cls.TokenType.REFRESH:
+            case TokenType.REFRESH:
                 expire += timedelta(days=settings.refresh_token_expire_days)
         return cls(uuid, expire, token_type)
 
@@ -49,8 +49,8 @@ class Token:
         payload = cls._validate_token(encoded_token)
         return cls(
             uuid = payload["uuid"],
-            expire = datetime.fromtimestamp(payload["expire"]),
-            token_type = Token.TokenType(payload["type"])
+            expire = datetime.fromtimestamp(payload["exp"]),
+            token_type = TokenType(payload["type"])
         )
 
     @staticmethod
@@ -65,12 +65,12 @@ class Token:
             raise Exception("Can't decode token")
         
         try:
-            Token.TokenType(payload.get("type"))
+            TokenType(payload.get("type"))
         except ValueError:
             raise Exception("Invalid token type")
         
         if payload.get("exp") == None:
-            raise Exception("Invalid token type")
+            raise Exception("Invalid token")
         
         elif payload.get("exp") - int(datetime.now(timezone.utc).timestamp()) < 0:
             raise Exception("Token expired")
@@ -79,7 +79,7 @@ class Token:
             raise Exception("Invalid token payload")
         
         try:
-            payload["uuid"] = UUID(int = payload["uuid"])
+            payload["uuid"] = UUID(payload["uuid"])
         except Exception as e:
             print(e)
             raise Exception("Invalid token uuid")

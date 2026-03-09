@@ -5,7 +5,7 @@ from sqlalchemy import pool
 
 from alembic import context
 
-from src.app.db.base import Base
+from src.app.clients.sql.base import Base
 from src.app.config import POSTGRES_URL
 
 # this is the Alembic Config object, which provides

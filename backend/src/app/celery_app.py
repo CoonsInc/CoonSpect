@@ -36,42 +36,47 @@ celery = Celery(
 class ChainException(Exception):
     pass
 
-def send_msg(task_id: str, message: str = DEFAULT_MESSAGE):
+def send_msg(user_id: str, message: str = DEFAULT_MESSAGE):
     """send task status with some data"""
     redis_sync.publish("ws_events", json.dumps({
-        "task_id": task_id,
+        "user_id": user_id,
         "message": message
     }))
 
-def exit_chain(binding, task_id: str, message: str = DEFAULT_MESSAGE):
+def exit_chain(binding, user_id: str, message: str = DEFAULT_MESSAGE):
     """exit from chain with error"""
-    send_msg(task_id, "error")
-    send_msg(task_id, message)
-    manager.disconnect(task_id)
+    send_msg(user_id, "error")
+    send_msg(user_id, message)
+    manager.disconnect(user_id)
 
     binding.retry(countdown=0, max_retries=0)
 
     raise ChainException(message)
-    
+
+@task_prerun.connect
+def track_task(user_id=None, task=None, sender=None, **kwargs):
+    status = TASK_MESSAGES.get(sender.name, DEFAULT_MESSAGE)
+    user_id = kwargs["args"][0]["user_id"]
+    redis_sync.set(f"task:{user_id}", status)
+    send_msg(user_id, status)
 
 @celery.task(bind = True)
 def stt_task(self, payload: dict):
     """
     send audio file to stt service\n
-    payload need "task_id" and "audio_filepath"\n
+    payload need "user_id" and "audio_filepath"\n
     writes "data" with stt response
     """
     with open(payload["audio_filepath"], "rb") as audiof:
         response = requests.post(
             config.STT_SERVICE_URL+"/transcribe",
-            headers = {"task_id": payload["task_id"]},
             files = {f"file": audiof},
             timeout = 1800
         )
     
     os.remove(payload["audio_filepath"])
     if (response.status_code != 200):
-        exit_chain(self, payload["task_id"], f"Error with stt request, status {response.status_code}")
+        exit_chain(self, payload["user_id"], f"Error with stt request, status {response.status_code}")
 
     payload["data"] = response.json()["text"]
 
@@ -81,7 +86,7 @@ def stt_task(self, payload: dict):
 def llm_task(self, payload: dict):
     """
     send audio file to stt service\n
-    payload need "task_id" and "data"\n
+    payload need "user_id" and "data"\n
     writes "data" with llm response
     """
 
@@ -92,7 +97,7 @@ def llm_task(self, payload: dict):
     )
 
     if (response.status_code != 200):
-        exit_chain(self, payload["task_id"], f"Error with llm request, status {response.status_code}")
+        exit_chain(self, payload["user_id"], f"Error with llm request, status {response.status_code}")
 
     payload["data"] = response.json()["summary"]
     return payload
@@ -101,13 +106,13 @@ def llm_task(self, payload: dict):
 def upload_lecture_task(payload: dict):
     """
     add lecture to user\n
-    payload need "task_id", "user_uuid", "data"\n
+    payload need "user_id", "user_uuid", "data"\n
     writes "data" with lecture id
     """
 
     with SessionLocal() as db:
         lecture = Lecture(
-            user_id=payload["user_uuid"],
+            user_id=payload["user_id"],
             audio_url=payload["audio_filepath"],
             text=payload["data"],
         )
@@ -125,10 +130,10 @@ def upload_lecture_task(payload: dict):
 def finish_task(payload: dict):
     """
     send payload["data"] as message in websocket and close connection\n
-    payload need "task_id", "data"
+    payload need "user_id", "data"
     """
-    send_msg(payload["task_id"], payload["data"])
-    manager.disconnect(payload["task_id"])
+    send_msg(payload["user_id"], payload["data"])
+    manager.disconnect(payload["user_id"])
 
 
 
@@ -137,7 +142,7 @@ def finish_task(payload: dict):
 def stt_task_test(self, payload: dict):
     """
     send audio file to stt service\n
-    payload need "task_id" and "audio_filepath"\n
+    payload need "user_id" and "audio_filepath"\n
     writes "data" with stt response
     """
     time.sleep(2)
@@ -148,17 +153,8 @@ def stt_task_test(self, payload: dict):
 def llm_task_test(self, payload: dict):
     """
     send audio file to stt service\n
-    payload need "task_id" and "data"\n
+    payload need "user_id" and "data"\n
     writes "data" with llm response
     """
     time.sleep(2)
     return payload
-
-
-@task_prerun.connect
-def track_task(task_id=None, task=None, sender=None, **kwargs):
-    status = TASK_MESSAGES.get(sender.name, DEFAULT_MESSAGE)
-    task_id = kwargs["args"][0]["task_id"]
-    redis_sync.set(f"task:{task_id}", status)
-    send_msg(task_id, status)
-
