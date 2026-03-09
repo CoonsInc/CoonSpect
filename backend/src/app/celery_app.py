@@ -49,9 +49,11 @@ def send_msg(user_id: str, message: str = DEFAULT_MESSAGE):
 
 def exit_chain(binding, user_id: str, message: str = DEFAULT_MESSAGE):
     """exit from chain with error"""
+    redis_sync.set(f"task:{user_id}", "error")
     send_msg(user_id, "error")
     send_msg(user_id, message)
     manager.disconnect(user_id)
+    redis_sync.delete(f"task:{user_id}")
 
     binding.retry(countdown=0, max_retries=0)
 
@@ -141,7 +143,7 @@ def finish_task(payload: dict):
     """
     send_msg(payload["user_id"], payload["data"])
     manager.disconnect(payload["user_id"])
-
+    redis_sync.delete(f"task:{payload["user_id"]}")
 
 
 

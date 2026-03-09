@@ -4,7 +4,7 @@ from celery import chain
 from src.app.celery_app import *
 from src.app.clients.redis import redis_async as r
 
-def run_audio_pipeline(user_id: UUID, bucket: str, filename: str):
+async def run_audio_pipeline(user_id: UUID, bucket: str, filename: str):
     print(f"[AUDIO PIPELINE] user_id = {user_id}; bucket {bucket}; filename {filename}")
 
     initial_payload = {
@@ -13,6 +13,8 @@ def run_audio_pipeline(user_id: UUID, bucket: str, filename: str):
         "filename": filename
     }
 
+    await r.set(f"task:{user_id}", "uploading")
+
     chain(
         stt_task.s(initial_payload),
         llm_task.s(),
@@ -20,7 +22,7 @@ def run_audio_pipeline(user_id: UUID, bucket: str, filename: str):
         finish_task.s()
     ).apply_async()
 
-def run_audio_pipeline_test(user_id: UUID, bucket: str, filename: str):
+async def run_audio_pipeline_test(user_id: UUID, bucket: str, filename: str):
     print(f"[AUDIO PIPELINE] task_id: {user_id}; bucket {bucket}; filename {filename}")
     
     initial_payload = {
@@ -28,6 +30,8 @@ def run_audio_pipeline_test(user_id: UUID, bucket: str, filename: str):
         "bucket": bucket,
         "filename": filename
     }
+
+    await r.set(f"task:{user_id}", "uploading")
 
     chain(
         stt_task.s(initial_payload),

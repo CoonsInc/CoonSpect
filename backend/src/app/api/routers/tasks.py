@@ -30,24 +30,32 @@ async def start(
     if ext not in settings.ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=400, detail=f"Extension {ext} not allowed")
     
+    if await redis_async.exists(f"task:{user.id}"):
+        task_status: str = await redis_async.get(f"task:{user.id}")
+        if task_status == "finish" or task_status == "error":
+            await redis_async.delete(f"task:{user.id}")
+        else:
+            raise HTTPException(status_code=400, detail=f"Task already running")
+    
     content = await file.read()
-
-    await redis_async.set(f"task:{user.id}", "uploading")
 
     bucket = settings.S3_RAW_LECTURES_BUCKET
     filename = f"{uuid4()}_{file.filename}"
     
-    await s3.put_object(
-        Bucket = bucket,
-        Key = filename,
-        Body = content,
-        ContentType = file.content_type or "application/octet-stream",
-    )
+    try:
+        await s3.put_object(
+            Bucket = bucket,
+            Key = filename,
+            Body = content,
+            ContentType = file.content_type or "application/octet-stream",
+        )
+    except Exception as e:
+        print(f"[TASK/START] suspitious error in start: {e}")
 
     if settings.BACKEND_MODE == "test":
-        run_audio_pipeline_test(user.id, bucket, filename)
+        await run_audio_pipeline_test(user.id, bucket, filename)
     else:
-        run_audio_pipeline(user.id, bucket, filename)
+        await run_audio_pipeline(user.id, bucket, filename)
 
     return Status.success(str(user.id))
 
