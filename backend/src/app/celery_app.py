@@ -1,11 +1,11 @@
 from celery import Celery
 from celery.signals import task_prerun
 import json
-import os
 import requests
 import time
+from pydantic import BaseModel
 
-import src.app.config as config
+from src.app.settings import settings
 from src.app.clients.sql.session import SessionLocal
 from src.app.clients.sql.models import Lecture
 from src.app.wsmanager import manager
@@ -29,12 +29,16 @@ TASK_FINISH = "src.celery_app.finish_task"
 
 celery = Celery(
     "tasks",
-    broker = config.REDIS_URL,
-    backend = config.REDIS_URL
+    broker = settings.REDIS_URL,
+    backend = settings.REDIS_URL
 )
 
 class ChainException(Exception):
     pass
+
+class RequestTranscribeSTT(BaseModel):
+    bucket: str = ""
+    filename: str = ""
 
 def send_msg(user_id: str, message: str = DEFAULT_MESSAGE):
     """send task status with some data"""
@@ -64,18 +68,21 @@ def track_task(user_id=None, task=None, sender=None, **kwargs):
 def stt_task(self, payload: dict):
     """
     send audio file to stt service\n
-    payload need "user_id" and "audio_filepath"\n
+    payload need "user_id", "bucket", "filename"\n
     writes "data" with stt response
     """
-    with open(payload["audio_filepath"], "rb") as audiof:
+    try:
         response = requests.post(
-            config.STT_SERVICE_URL+"/transcribe",
-            files = {f"file": audiof},
+            settings.STT_SERVICE_URL+"/transcribe",
+            json = RequestTranscribeSTT(bucket = payload["bucket"], filename = payload["filename"]).model_dump(),
             timeout = 1800
         )
+    except requests.exceptions.ConnectionError as e:
+        print(f"[STT PIPELINE] suspicious error: {e}")
+        exit_chain(self, payload["user_id"], e)
     
-    os.remove(payload["audio_filepath"])
-    if (response.status_code != 200):
+    if response.status_code != 200:
+        print(f"[STT PIPELINE] suspicious response from stt: {response.text}")
         exit_chain(self, payload["user_id"], f"Error with stt request, status {response.status_code}")
 
     payload["data"] = response.json()["text"]
@@ -91,7 +98,7 @@ def llm_task(self, payload: dict):
     """
 
     response = requests.post(
-        config.LLM_SERVICE_URL+"/summarize",
+        settings.LLM_SERVICE_URL+"/summarize",
         json={"text":payload["data"]},
         timeout = 1800
     )
@@ -113,7 +120,7 @@ def upload_lecture_task(payload: dict):
     with SessionLocal() as db:
         lecture = Lecture(
             user_id=payload["user_id"],
-            audio_url=payload["audio_filepath"],
+            audio_url=f"{payload["bucket"]}/{payload["filename"]}",
             text=payload["data"],
         )
         db.add(lecture)

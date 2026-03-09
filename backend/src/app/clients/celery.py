@@ -4,15 +4,13 @@ from celery import chain
 from src.app.celery_app import *
 from src.app.clients.redis import redis_async as r
 
-def run_audio_pipeline(user_id: UUID, audio_filepath: str):    
-    if not os.path.exists(audio_filepath):
-        raise Exception(f"File {audio_filepath} not found")
-
-    print(f"[AUDIO PIPELINE] user_id = {user_id}; audio_filepath = {audio_filepath}")
+def run_audio_pipeline(user_id: UUID, bucket: str, filename: str):
+    print(f"[AUDIO PIPELINE] user_id = {user_id}; bucket {bucket}; filename {filename}")
 
     initial_payload = {
         "user_id": str(user_id),
-        "audio_filepath": audio_filepath,
+        "bucket": bucket,
+        "filename": filename
     }
 
     chain(
@@ -22,19 +20,17 @@ def run_audio_pipeline(user_id: UUID, audio_filepath: str):
         finish_task.s()
     ).apply_async()
 
-def run_audio_pipeline_test(user_id: UUID, audio_filepath: str):
-    if not os.path.exists(audio_filepath):
-        raise Exception(f"File {audio_filepath} not found")
-
-    print(f"[AUDIO PIPELINE] task_id: {user_id}; audio_filepath {audio_filepath}")
-
+def run_audio_pipeline_test(user_id: UUID, bucket: str, filename: str):
+    print(f"[AUDIO PIPELINE] task_id: {user_id}; bucket {bucket}; filename {filename}")
+    
     initial_payload = {
         "user_id": str(user_id),
-        "audio_filepath": audio_filepath
+        "bucket": bucket,
+        "filename": filename
     }
 
     chain(
-        stt_task_test.s(initial_payload),
+        stt_task.s(initial_payload),
         llm_task_test.s(),
         upload_lecture_task.s(),
         finish_task.s()
@@ -47,9 +43,6 @@ async def ws_event_listener():
         print(f"Redis received: {message}")
         if message["type"] == "message":
             data = json.loads(message["data"])
-            if manager.contains(data["user_id"]):
-                await manager.send_message(data["user_id"], data["message"])
-            else:
-                print("!!! wtf is this message")
+            await manager.send_message(data["user_id"], data["message"])
 
             

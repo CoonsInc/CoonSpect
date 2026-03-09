@@ -52,22 +52,19 @@ class STTEngine:
     #         if os.path.exists(video_path):
     #             os.unlink(video_path)
     
-    def transcribe(self, file_bytes: bytes, language: str = "ru", file_type: str = "audio") -> str:
-        
+    def transcribe(self, tmp_file_path: Path, language: str = "ru", file_type: str = "audio") -> str:
         # if file_type == "audio":
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as f:
-            f.write(file_bytes)
-            temp_path = f.name
+        # with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as f:
+        #     f.write(file_bytes)
+        #     temp_path = f.name
         # else:
         #     self.extract_audio_from_video(file_bytes, )
              
-            
         try:
-            audio = whisperx.load_audio(temp_path)
+            audio = whisperx.load_audio(str(tmp_file_path))
             result = self.model.transcribe(audio, language=language)
             
             return result
         
         finally:
-            if os.path.exists(temp_path):
-                os.unlink(temp_path)
+            tmp_file_path.unlink(missing_ok = True)

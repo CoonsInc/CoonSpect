@@ -5,7 +5,7 @@ from passlib.context import CryptContext
 from typing import Any
 from enum import Enum
 
-from src.app.config import settings
+from src.app.settings import settings
 from src.app.clients.redis import redis_sync as redis
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
@@ -32,16 +32,16 @@ class Token:
             "exp": int(self.expire.timestamp()),
             "type": self.token_type.value
         }
-        return jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
+        return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
     
     @classmethod
     def from_type(cls, uuid: UUID, token_type: TokenType) -> "Token":
         expire = datetime.now(timezone.utc)
         match token_type:
             case TokenType.ACCESS:
-                expire += timedelta(minutes=settings.access_token_expire_minutes)
+                expire += timedelta(minutes=settings.JWT_ACCESS_EXPIRE_MINUTES)
             case TokenType.REFRESH:
-                expire += timedelta(days=settings.refresh_token_expire_days)
+                expire += timedelta(days=settings.JWT_REFRESH_EXPIRE_DAYS)
         return cls(uuid, expire, token_type)
 
     @classmethod
@@ -59,7 +59,7 @@ class Token:
             raise Exception("Token has been revoked")
         
         try:
-            payload = jwt.decode(encoded_token, settings.secret_key, algorithms=[settings.algorithm])
+            payload = jwt.decode(encoded_token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
         except Exception as e:
             print(e)
             raise Exception("Can't decode token")
