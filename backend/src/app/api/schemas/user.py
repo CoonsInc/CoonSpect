@@ -14,10 +14,3 @@ class UserRead(UserBase):
         from_attributes=True,
         extra="ignore"
     )
-
-class Token(BaseModel):
-    access_token: str
-    refresh_token: str
-
-class RefreshToken(BaseModel):
-    refresh_token: str

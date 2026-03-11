@@ -1,18 +1,18 @@
 from redis import Redis as RedisSync
 from redis.asyncio import Redis as RedisAsync
 
-import src.app.config as config
+from src.app.settings import settings
 
 redis_sync = RedisSync(
-    host = config.REDIS_HOST,
-    port = config.REDIS_PORT,
+    host = settings.REDIS_HOST,
+    port = settings.REDIS_PORT,
     db = 0,
     decode_responses = True
 )
 
 redis_async = RedisAsync(
-    host=config.REDIS_HOST,
-    port=config.REDIS_PORT,
+    host=settings.REDIS_HOST,
+    port=settings.REDIS_PORT,
     db=0,
     decode_responses=True
 )
