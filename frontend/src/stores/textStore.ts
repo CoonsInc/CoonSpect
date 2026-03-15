@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { startAndTrackLectureTask, getLectureResult } from '../api/lectureApi';
+import { startAndTrackLectureTask, getLectureResult } from '../api/generateApi';
 
 interface AudioState {
   audioFile: File | null;

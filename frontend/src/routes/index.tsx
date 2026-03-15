@@ -1,6 +1,5 @@
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { useAppStore, useAuthStore } from "../stores";
-import { useEffect } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { useAuthStore } from "../stores";
 
 import LoginPage from '../pages/LoginPage';
 import MainPage from '../pages/MainPage';

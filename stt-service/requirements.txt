@@ -3,9 +3,10 @@ ctranslate2==4.5.0
 fastapi==0.135.1
 uvicorn==0.24.0
 python-multipart==0.0.6
+pydantic==2.12.5
+pydantic-settings==2.13.1
+aioboto3==15.5.0
 torch
 torchaudio
-pydantic
-pydantic-settings
-aioboto3
---extra-index-url https://download.pytorch.org/whl/cu126
+--extra-index-url https://mirrors.aliyun.com/pytorch-wheels/cu126
+# --extra-index-url https://download.pytorch.org/whl/cu126

@@ -25,7 +25,7 @@ export const authApi = {
 
   getCurrentUser: async (): Promise<User | null> => {
     try {
-      const res = await apiClient.get<User>('/api/users/me');
+      const res = await apiClient.get<User>('/user/me');
       return res.data;
     } catch (error) {
       return null;

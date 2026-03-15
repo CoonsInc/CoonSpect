@@ -10,26 +10,26 @@ export async function startAndTrackLectureTask(
   
   console.log(`[FRONT] Starting upload for task ${file.name}`);
   const formData = new FormData();
+  formData.append('file', file);
 
-  const res = await apiClient.post(`/task/start/`, formData, {
+  const res = await apiClient.post(`/task/start`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   });
 
-  if (res.data.status?.toLowerCase() !== 'succes' || !res.data.msg) {
+  if (res.data.status?.toLowerCase() !== 'success') {
     throw new Error(res.data.msg || "Error start task");
   }
 
-  const taskId = res.data.msg;
-  console.log(`[FRONT] Task started successfuly, id: ${taskId}`);
+  console.log(`[FRONT] Task started successfully on backend`);
 
   return new Promise((resolve, reject) => {
-    const ws = new WebSocket(`${WS_BASE_URL}/task/ws/${taskId}`);
+    const ws = new WebSocket(`${WS_BASE_URL}/task/ws`);
 
     let isFinished = false;
     let isError = false;
 
     ws.onopen = () => {
-      console.log(`[FRONT] WS open for task ${taskId}`);
+      console.log(`[FRONT] WS open`);
     };
 
     ws.onmessage = (event) => {
@@ -58,18 +58,18 @@ export async function startAndTrackLectureTask(
     };
 
     ws.onerror = (e) => {
-      console.error(`[FRONT] WS Error for task ${taskId}:`, e);
+      console.error(`[FRONT] WS Error`, e);
       ws.close();
       reject(e);
     };
 
-    ws.onclose = () => console.log(`[FRONT] WS closed (${taskId})`);
+    ws.onclose = () => console.log(`[FRONT] WS closed`);
   });
 }
 
 export async function getLectureResult(lectureId: string) {
   console.log(`[FRONT] Requesting result for lecture ${lectureId}`);
-  const res = await apiClient.get(`/api/lectures/${lectureId}`);
+  const res = await apiClient.get(`/lectures/${lectureId}`);
   console.log(`[FRONT] Result received for lecture ${lectureId}`);
   return res.data;
 }
