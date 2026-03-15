@@ -1,8 +1,12 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 import uvicorn
 import os
 import time
 from datetime import datetime
+
+from schemas import RequestTranscribeSTT
+from s3 import get_s3_client, download_from_s3
+from settings import settings
 
 app = FastAPI(title="Mock STT Microservice", description="Простая заглушка")
 
@@ -13,26 +17,22 @@ MOCK_SEGMENTS = [
     {"start": 2.0, "end": 5.0, "text": "Заглушка всегда возвращает одно и то же."}
 ]
 
-ALLOWED_EXTENSIONS = {
-    '.wav', '.mp3', '.m4a', '.flac', '.aac', '.ogg', '.wma', '.aiff',
-    '.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv', '.webm', '.mpeg', '.mpg'
-}
-
 @app.post("/transcribe")
 async def transcribe_audio(
-    file: UploadFile = File(..., description="Аудио или видео файл"),
-    language: str = "ru"
+    content: RequestTranscribeSTT,
+    language: str = "ru",
+    s3_client = Depends(get_s3_client)
 ):
+    file_ext = os.path.splitext(content.filename.lower())[1]
+
+    print(content.filename, file_ext)
     
-    file_ext = os.path.splitext(file.filename.lower())[1]
+    if file_ext not in settings.ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=400, detail="Неподдерживаемый формат файла")
     
-    if file_ext not in ALLOWED_EXTENSIONS:
-        raise HTTPException(
-            status_code=400,
-            detail="Неподдерживаемый формат файла"
-        )
-    
-    file_bytes = await file.read()
+    tmp_file_path = await download_from_s3(s3_client, content.bucket, content.filename)
+    file_size = tmp_file_path.stat().st_size
+    tmp_file_path.unlink(missing_ok = True)
     
     time.sleep(5)
     
@@ -41,8 +41,8 @@ async def transcribe_audio(
         "text": MOCK_TEXT,
         "segments": MOCK_SEGMENTS,
         "metadata": {
-            "original_filename": file.filename,
-            "file_size": len(file_bytes),
+            "original_filename": content.filename,
+            "file_size": file_size,
             "processing_time": 5.0,
             "is_mock": True,
             "timestamp": datetime.now().isoformat()
