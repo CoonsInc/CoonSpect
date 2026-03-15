@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { createLectureTask, uploadAudioViaHTTP, getLectureResult } from '../api/lectureApi';
+import { startAndTrackLectureTask, getLectureResult } from '../api/lectureApi';
 
 interface AudioState {
   audioFile: File | null;
@@ -58,34 +58,26 @@ export const useTextStore = create<AudioState>()(
         set({ audioFile: null, audioUrl: null, isSaving: false });
       },
 
-generateTranscript: async (file: File) => {
+      generateTranscript: async (file: File) => {
         set({ isSaving: true, progressStatus: 'uploading' });
 
         try {
-          // create task
-          const { taskId } = await createLectureTask();
-          console.log('[FRONT] task created', taskId);
-
-          // upload + ws tracking
-          const { lectureId } = await uploadAudioViaHTTP(
+          const { lectureId } = await startAndTrackLectureTask(
             file,
-            taskId,
             (status) => set({ progressStatus: status })
           );
 
-          console.log('[FRONT] lecture_id received', lectureId);
+          console.log('[FRONT] lecture_id received:', lectureId);
 
-          // get result
           const lecture = await getLectureResult(lectureId);
+          
+          const text = lecture.text || lecture.transcription || ''; 
+          
+          set({ processedText: text, progressStatus: 'finish' });
 
-          const text = lecture.text;
-          set({ processedText: text });
-
-
-          set({ progressStatus: 'finish' });
         } catch (e) {
-          console.error('[FRONT] audio processing error', e);
-          set({ progressStatus: null });
+          console.error('[FRONT] Audio processing error:', e);
+          set({ progressStatus: 'error' });
         } finally {
           set({ isSaving: false });
         }
