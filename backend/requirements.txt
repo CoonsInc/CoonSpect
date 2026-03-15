@@ -1,5 +1,5 @@
 fastapi[all]==0.135.1
-alembic 
+alembic
 psycopg2-binary
 celery
 redis

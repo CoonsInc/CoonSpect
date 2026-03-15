@@ -81,7 +81,7 @@ def stt_task(self, payload: dict):
         )
     except requests.exceptions.ConnectionError as e:
         print(f"[STT PIPELINE] suspicious error: {e}")
-        exit_chain(self, payload["user_id"], e)
+        exit_chain(self, payload["user_id"], str(e))
     
     if response.status_code != 200:
         print(f"[STT PIPELINE] suspicious response from stt: {response.text}")

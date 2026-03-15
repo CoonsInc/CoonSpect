@@ -7,11 +7,25 @@ import EditorSection from "../components/organisms/EditorSection";
 import HowItWorksSection from "../components/organisms/HowItWorksSection";
 import ExamplesSection from "../components/organisms/ExamplesSection";
 import Footer from "../components/organisms/Footer";
+import { useEffect } from 'react';
 
 const MainPage: FC = () => {
   const { user } = useAuthStore();
   const { appState, setAppState } = useAppStore();
   const { processedText, generateTranscript, progressStatus } = useTextStore();
+  const { isSaving } = useTextStore();
+
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (isSaving) {
+        event.preventDefault();
+        event.returnValue = ''; 
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isSaving]);
 
   const handleGenerate = async (file: File) => {
     if (!user) {
@@ -75,9 +89,6 @@ const MainPage: FC = () => {
               onAddToFiles={handleAddToFiles}
               onBack={() => setAppState("upload")}
             />
-            <HowItWorksSection />
-            <ExamplesSection />
-            <Footer />
           </>
         );
       
@@ -89,14 +100,12 @@ const MainPage: FC = () => {
   return (
     <div className="bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] min-h-screen font-sans overflow-x-hidden">
       <Header />
-      {renderContent()}
-      {(appState === "upload" || appState === "loading") && (
-        <>
-          <HowItWorksSection />
-          <ExamplesSection />
-          <Footer />
-        </>
-      )}
+      
+      {renderContent()} 
+      
+      <HowItWorksSection />
+      <ExamplesSection />
+      <Footer />
     </div>
   );
 };

@@ -1,21 +1,28 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 
 from src.app.clients.redis import redis_sync as redis
 from src.app.api.schemas.user import UserCreate
-from src.app.api.schemas.token import RefreshToken, RefreshAccessTokens
 from src.app.api.schemas.status import Status
 from src.app.clients.sql.session import get_db
 from src.app.api.tools import decode_token, generate_tokens
 from src.app.security import TokenType, hash_password, verify_password
+from src.app.settings import settings
 
 from src.app.clients.sql.models import User
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-@router.post("/register", response_model=RefreshAccessTokens)
-async def register(content: UserCreate, db: Session = Depends(get_db)):
+COOKIE_PARAMS = {
+    "httponly": True,
+    "samesite": "lax",
+    "secure": False,
+    "max_age": settings.JWT_ACCESS_EXPIRE_MINUTES,
+}
+
+@router.post("/register", status_code=status.HTTP_201_CREATED)
+async def register(content: UserCreate, db: Session = Depends(get_db), response: Response = None):
     if db.query(User).filter(User.username == content.username).first():
         raise HTTPException(status_code=400, detail="Username already exists")
     
@@ -27,38 +34,79 @@ async def register(content: UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
     
-    return generate_tokens(user.id)
+    tokens = generate_tokens(user.id)
+    
+    response.set_cookie(key="access_token", value=tokens.access_token, **COOKIE_PARAMS)
+    response.set_cookie(
+        key="refresh_token", 
+        value=tokens.refresh_token, 
+        **{**COOKIE_PARAMS, "max_age": settings.JWT_REFRESH_EXPIRE_DAYS}
+    )
+    
+    return Status.success()
 
-@router.post("/login", response_model=RefreshAccessTokens)
-async def login(content: UserCreate, db: Session = Depends(get_db)):
+@router.post("/login")
+async def login(content: UserCreate, db: Session = Depends(get_db), response: Response = None):
     user = db.query(User).filter(User.username == content.username).first()
-    if user == None:
-        raise HTTPException(status_code=401, detail="Invalid username")
+    if not user or not verify_password(content.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
     
-    if not verify_password(content.password, user.password_hash):
-        raise HTTPException(status_code=401, detail="Invalid password")
+    tokens = generate_tokens(user.id)
     
-    return generate_tokens(user.id)
+    response.set_cookie(key="access_token", value=tokens.access_token, **COOKIE_PARAMS)
+    response.set_cookie(
+        key="refresh_token", 
+        value=tokens.refresh_token, 
+        **{**COOKIE_PARAMS, "max_age": settings.JWT_REFRESH_EXPIRE_DAYS}
+    )
+    
+    return Status.success()
 
-@router.post("/refresh", response_model=RefreshAccessTokens)
-async def refresh(content: RefreshToken):
-    refresh_token = decode_token(content.refresh_token, TokenType.REFRESH)
+@router.post("/refresh")
+async def refresh(request: Request, response: Response):
+    refresh_token = request.cookies.get("refresh_token")
+    if not refresh_token:
+        raise HTTPException(status_code=401, detail="Refresh token not found")
     
-    blacklist_ttl = max((refresh_token.expire - datetime.now(timezone.utc)).seconds, 1)
+    if redis.get(f"blacklist:{refresh_token}"):
+        raise HTTPException(status_code=401, detail="Token revoked")
     
-    redis.setex(f"blacklist:{content.refresh_token}", blacklist_ttl, "true")
-
-    return generate_tokens()
-
-@router.post("/logout", response_model=Status)
-async def logout(content: RefreshAccessTokens):
-    access_token = decode_token(content.access_token, TokenType.ACCESS)
-    refresh_token = decode_token(content.refresh_token, TokenType.REFRESH)
-
-    blacklist_access_ttl = max((access_token.expire - datetime.now(timezone.utc)).seconds, 1)
-    blacklist_refresh_ttl = max((refresh_token.expire - datetime.now(timezone.utc)).seconds, 1)
+    token_data = decode_token(refresh_token, TokenType.REFRESH)
     
-    redis.setex(f"blacklist:{content.refresh_token}", blacklist_access_ttl, "true")
-    redis.setex(f"blacklist:{content.access_token}", blacklist_refresh_ttl, "true")
+    ttl = max((token_data.expire - datetime.now(timezone.utc)).seconds, 1)
+    redis.setex(f"blacklist:{refresh_token}", ttl, "true")
+
+    tokens = generate_tokens(token_data.sub)
+    
+    response.set_cookie(key="access_token", value=tokens.access_token, **COOKIE_PARAMS)
+    response.set_cookie(
+        key="refresh_token", 
+        value=tokens.refresh_token, 
+        **{**COOKIE_PARAMS, "max_age": settings.JWT_REFRESH_EXPIRE_DAYS}
+    )
+    
+    return {"status": "ok"}
+
+@router.post("/logout")
+async def logout(request: Request, response: Response):
+    access_token = request.cookies.get("access_token")
+    refresh_token = request.cookies.get("refresh_token")
+    
+    if access_token:
+        try:
+            data = decode_token(access_token, TokenType.ACCESS)
+            ttl = max((data.expire - datetime.now(timezone.utc)).seconds, 1)
+            redis.setex(f"blacklist:{access_token}", ttl, "true")
+        except: pass
+    
+    if refresh_token:
+        try:
+            data = decode_token(refresh_token, TokenType.REFRESH)
+            ttl = max((data.expire - datetime.now(timezone.utc)).seconds, 1)
+            redis.setex(f"blacklist:{refresh_token}", ttl, "true")
+        except: pass
+    
+    response.delete_cookie(key="access_token", path="/")
+    response.delete_cookie(key="refresh_token", path="/")
     
     return Status.success()
