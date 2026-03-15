@@ -1,52 +1,50 @@
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-// import { useUser } from "../contexts/UserContext";
 import { useAppStore, useAuthStore } from "../stores";
 import { useEffect } from 'react';
+
 import LoginPage from '../pages/LoginPage';
 import MainPage from '../pages/MainPage';
 import LecturesPage from '../pages/LecturesPage';
 import ProfilePage from '../pages/ProfilePage';
 
-// const LoginRoute = () => <LoginPage />;
+import ProtectedRoute from './ProtectedRoute';
+import Spinner from '../components/atoms/Spinner';
 
 const AppRoutes = () => {
-  const { user, isInitializing } = useAuthStore();
-  const location = useLocation();
-  const { setCurrentRoute } = useAppStore();
+  const { isInitializing } = useAuthStore();
+  // const location = useLocation();
+  // const { setCurrentRoute } = useAppStore();
 
-  useEffect(() => {
-    setCurrentRoute(location.pathname);
-  }, [location.pathname, setCurrentRoute]);
+  // useEffect(() => {
+  //   setCurrentRoute(location.pathname);
+  // }, [location.pathname, setCurrentRoute]);
 
+  // Заменяем хардкод на твой аккуратный Spinner
   if (isInitializing) {
     return (
-      <div className="bg-[#0B0C1C] text-white min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-400 mx-auto mb-4"></div>
-          <p className="text-gray-400">Загрузка...</p>
-        </div>
+      <div className="bg-[var(--color-bg-primary)] min-h-screen flex flex-col items-center justify-center">
+        <Spinner size="lg" />
+        <p className="text-[var(--color-text-secondary)] mt-4 text-sm font-medium">
+          Загрузка...
+        </p>
       </div>
     );
   }
 
   return (
     <Routes>
-      <Route 
-        path="/login" 
-        element={!user ? <LoginPage /> : <Navigate to="/upload" replace />} 
-      />
+      {/* ПУБЛИЧНЫЕ РОУТЫ */}
+      <Route path="/login" element={<LoginPage />} />
       <Route path="/" element={<Navigate to="/upload" replace />} />
       <Route path="/upload" element={<MainPage />} />
-      <Route 
-        path="/files" 
-        element={user ? <LecturesPage /> : <Navigate to="/login" replace />} 
-      />
-      <Route path="/lectures" element={<LecturesPage />} />
-      <Route 
-        path="/profile" 
-        element={user ? <ProfilePage /> : <Navigate to="/login" replace />} 
-      />
+
+      {/* ЗАЩИЩЕННЫЕ РОУТЫ (Группируем их внутри ProtectedRoute) */}
+      <Route element={<ProtectedRoute />}>
+        <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/lectures" element={<LecturesPage />} />
+      </Route>
       
+      {/* FALLBACK (если путь не найден) */}
       <Route path="*" element={<Navigate to="/upload" replace />} />
     </Routes>
   );
