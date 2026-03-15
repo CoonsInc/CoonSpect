@@ -3,10 +3,9 @@ from fastapi import WebSocket, WebSocketDisconnect, status
 from fastapi import UploadFile, File, Depends
 from uuid import UUID, uuid4
 from pathlib import Path
+from http.cookies import SimpleCookie
 
 from src.app.api.schemas.status import Status
-from src.app.api.tools import access_token_request
-from src.app.api.schemas.user import UserRead
 from src.app.api.tools import decode_token
 from src.app.clients.s3 import get_s3_client
 from src.app.settings import settings
@@ -14,13 +13,15 @@ from src.app.wsmanager import manager
 from src.app.clients.celery import run_audio_pipeline, run_audio_pipeline_test
 from src.app.clients.redis import redis_async
 from src.app.security import TokenType
+from src.app.api.tools import get_current_user
+from src.app.clients.sql.models import User
 
 router = APIRouter(prefix="/task", tags=["tasks"])
 
 @router.post("/start", response_model=Status)
 async def start(
     file: UploadFile = File(...),
-    user: UserRead = Depends(access_token_request),
+    user: User = Depends(get_current_user),
     s3 = Depends(get_s3_client)
 ):
     if not file.filename:
@@ -57,41 +58,47 @@ async def start(
     else:
         await run_audio_pipeline(user.id, bucket, filename)
 
-    return Status.success(str(user.id))
+    return Status.success()
 
-@router.websocket("/ws/{task_id}")
-async def websocket_endpoint(websocket: WebSocket, task_id: UUID):
-    print(f"[WS {websocket}] Connected task {task_id}")
+@router.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    print(f"[WS] WS STARTING")
+    
+    print(f"[WS] {websocket.headers.items()}")
 
-    if not await redis_async.exists(f"task:{task_id}"):
-        print(f"[WS {websocket}] task_id {task_id} not found")
-        await websocket.close(
-            code=status.WS_1008_POLICY_VIOLATION,
-            reason=f"Task {task_id} not found"
-        )
-        return
+    task_id = None
 
-    await manager.connect(websocket, str(task_id))
-
-    access_token_encoded = await websocket.receive_text()
-    try:
-        access_token = decode_token(access_token_encoded, TokenType.ACCESS)
-        if access_token.uuid != task_id:
-            await websocket.close(
-                code=status.WS_1008_POLICY_VIOLATION,
-                reason=f"Invalid token"
-            )
-            return
-        
-    except HTTPException as e:
-        print(e)
-        await websocket.close(
-            code=status.WS_1008_POLICY_VIOLATION,
-            reason=f"Invalid token"
-        )
+    cookie_header = websocket.headers.get("cookie")
+    if not cookie_header:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="No cookies")
         return
     
-    print(f"[WS {websocket}] connection to {task_id} validated")
+    cookies = SimpleCookie(cookie_header)
+    access_token_value = cookies.get("access_token")
+    
+    if not access_token_value:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="No access token")
+        return
+    
+    try:
+        token_data = decode_token(access_token_value.value, TokenType.ACCESS)
+        
+        # Проверка блэклиста (async)
+        if await redis_async.get(f"blacklist:{access_token_value.value}"):
+            raise HTTPException(401, "Token revoked")
+        
+        task_id = token_data.uuid
+            
+    except Exception as e:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid token")
+        return
+    
+    if not await redis_async.exists(f"task:{task_id}"):
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Task not found")
+        return
+    
+    await manager.connect(websocket, str(task_id))
+    print(f"[WS {websocket}] Connected & Authed task {task_id}")
 
     await manager.send_message(str(task_id), await redis_async.get(f"task:{task_id}"))
 
