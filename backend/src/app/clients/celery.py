@@ -34,7 +34,7 @@ async def run_audio_pipeline_test(user_id: UUID, bucket: str, filename: str):
     await r.set(f"task:{user_id}", "uploading")
 
     chain(
-        stt_task.s(initial_payload),
+        stt_task_test.s(initial_payload),
         llm_task_test.s(),
         upload_lecture_task.s(),
         finish_task.s()

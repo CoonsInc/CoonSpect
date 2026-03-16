@@ -6,15 +6,15 @@ class Settings(BaseSettings):
     # JWT
     JWT_SECRET_KEY: str = "your-super-secret-key-change-in-prod"
     JWT_ALGORITHM: str = "HS256"
-    JWT_ACCESS_EXPIRE_MINUTES: int = 30
-    JWT_REFRESH_EXPIRE_DAYS: int = 7
+    JWT_ACCESS_EXPIRE_MINUTES: int = 30 * 60
+    JWT_REFRESH_EXPIRE_DAYS: int = 7 * 3600 * 24
 
     # Extensions
     ALLOWED_AUDIO_EXTENSIONS: set[str] = {'.wav', '.mp3', '.m4a', '.flac', '.aac', '.ogg', '.wma', '.aiff'}
     ALLOWED_VIDEO_EXTENSIONS: set[str] = {'.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv', '.webm', '.mpeg', '.mpg'}
 
     # Mode
-    BACKEND_MODE: str = 'test'  # 'test' or 'prod'
+    BACKEND_MODE: str = 'prod'  # 'test' or 'prod'
 
     # S3
     S3_HOST: str = 'localhost'

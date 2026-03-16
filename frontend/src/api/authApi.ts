@@ -1,31 +1,34 @@
-// api/authApi.ts
-// import { apiClient } from './index';
-import { mockApi } from './mockClient';
-import type { User } from './mockClient';
-
+import { apiClient } from './index';
 
 export interface LoginPayload {
   username: string;
   password: string;
 }
 
+export interface User {
+  id: string;
+  username: string;
+}
+
 export const authApi = {
-  login: async (payload: LoginPayload): Promise<User> => {
-    // TODO: заменить на реальный запрос
-    // return apiClient.post<User>('/auth/login', payload).then(res => res.data);
-    return mockApi.login(payload.username, payload.password);
+  login: async (payload: LoginPayload): Promise<void> => {
+    await apiClient.post('/auth/login', payload);
   },
 
-  register: async (payload: LoginPayload): Promise<User> => {
-    // TODO: заменить на реальный запрос
-    return mockApi.register(payload.username);
+  register: async (payload: LoginPayload): Promise<void> => {
+    await apiClient.post('/auth/register', payload);
   },
 
   logout: async (): Promise<void> => {
-    return mockApi.logout();
+    await apiClient.post('/auth/logout');
   },
 
   getCurrentUser: async (): Promise<User | null> => {
-    return mockApi.getCurrentUser();
+    try {
+      const res = await apiClient.get<User>('/user/me');
+      return res.data;
+    } catch (error) {
+      return null;
+    }
   },
 };
