@@ -2,13 +2,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { authApi } from '../api/authApi';
-
-export interface User {
-  id: string;
-  username: string;
-  profile?: string;
-  settings?: string;
-}
+import type { User } from '../api/authApi';
 
 interface AuthState {
   user: User | null;
@@ -35,9 +29,10 @@ export const useAuthStore = create<AuthState>()(
           const currentUser = await authApi.getCurrentUser();
           if (currentUser) {
             set({ user: currentUser });
-            console.log('✅ Восстановлен пользователь:', currentUser.username);
+            console.log('✅ Пользователь авторизован:', currentUser.username);
           } else {
-            console.log('⚠️ Пользователь не найден');
+            console.log('⚠️ Пользователь не авторизован');
+            set({ user: null });
           }
         } catch (error) {
           console.warn('Ошибка при инициализации authStore', error);
@@ -48,8 +43,9 @@ export const useAuthStore = create<AuthState>()(
 
       login: async (username, password) => {
         try {
-          const user = await authApi.login({ username, password });
-          set({ user });
+          await authApi.login({ username, password });
+          const user = await authApi.getCurrentUser();
+          if (user) set({ user });
         } catch (error) {
           console.error('Ошибка входа', error);
           throw error;
@@ -58,8 +54,9 @@ export const useAuthStore = create<AuthState>()(
 
       register: async (username, password) => {
         try {
-          const user = await authApi.register({ username, password });
-          set({ user });
+          await authApi.register({ username, password });
+          const user = await authApi.getCurrentUser();
+          if (user) set({ user });
         } catch (error) {
           console.error('Ошибка регистрации', error);
           throw error;
@@ -70,7 +67,7 @@ export const useAuthStore = create<AuthState>()(
         try {
           await authApi.logout();
         } catch (e) {
-          console.warn('Ошибка выхода, очищаем локально', e);
+          console.warn('Ошибка на сервере при выходе, но очищаем локально', e);
         } finally {
           set({ user: null });
         }

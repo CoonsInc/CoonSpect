@@ -29,8 +29,8 @@ const Header: React.FC = () => {
     const isMainPage = location.pathname === "/" || location.pathname === "/upload";
     
     if (id === "hero") {
-      if (location.pathname !== "/") {
-        navigate("/");
+      if (!isMainPage) {
+        navigate("/upload"); 
         setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 100);
       } else {
         window.scrollTo({ top: 0, behavior: "smooth" });
@@ -38,9 +38,8 @@ const Header: React.FC = () => {
       setMenuOpen(false);
       return;
     }
-
     if (!isMainPage) {
-      navigate("/");
+      navigate("/upload");
       setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth" }), 100);
     } else {
       document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
@@ -70,7 +69,7 @@ const Header: React.FC = () => {
     { id: "hero", label: "Главная", icon: Home, mobileOnly: false },
     { id: "how", label: "Как это работает", icon: FileText, mobileOnly: false },
     { id: "examples", label: "Примеры", icon: Upload, mobileOnly: false },
-    { path: "/files", label: "Мои файлы", icon: FileText, mobileOnly: false },
+    { path: "/lectures", label: "Мои файлы", icon: FileText, mobileOnly: false },
   ];
 
   return (
