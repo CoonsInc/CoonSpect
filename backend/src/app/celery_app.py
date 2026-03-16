@@ -121,9 +121,10 @@ def upload_lecture_task(payload: dict):
 
     with SessionLocal() as db:
         lecture = Lecture(
-            user_id=payload["user_id"],
-            audio_url=f"{payload["bucket"]}/{payload["filename"]}",
-            text=payload["data"],
+            user_id = payload["user_id"],
+            name = payload["filename"],
+            audio_url = f"{payload["bucket"]}/{payload["filename"]}",
+            text = payload["data"],
         )
         db.add(lecture)
         db.commit()

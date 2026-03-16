@@ -3,7 +3,7 @@ from uuid import UUID
 from datetime import datetime, timedelta, timezone
 from passlib.context import CryptContext
 from typing import Any
-from enum import Enum
+from enum import StrEnum
 
 from src.app.settings import settings
 from src.app.clients.redis import redis_sync as redis
@@ -16,7 +16,7 @@ def verify_password(plain: str, hashed: str) -> bool:
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
-class TokenType(str, Enum):
+class TokenType(StrEnum):
         ACCESS = "access"
         REFRESH = "refresh"
 

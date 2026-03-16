@@ -4,6 +4,11 @@ from uuid import UUID
 class UserBase(BaseModel):
     username: str = Field(..., min_length=3, max_length=50)
 
+    model_config = ConfigDict(
+        from_attributes=True,
+        extra="ignore"
+    )
+
 class UserCreate(UserBase):
     password: str = Field(..., min_length=6)
 

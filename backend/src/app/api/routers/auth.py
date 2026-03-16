@@ -21,7 +21,7 @@ COOKIE_PARAMS = {
     "max_age": settings.JWT_ACCESS_EXPIRE_MINUTES,
 }
 
-@router.post("/register", status_code=status.HTTP_201_CREATED)
+@router.post("/register")
 async def register(content: UserCreate, db: Session = Depends(get_db), response: Response = None):
     if db.query(User).filter(User.username == content.username).first():
         raise HTTPException(status_code=400, detail="Username already exists")
