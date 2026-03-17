@@ -16,20 +16,21 @@ async def get_lectures(
     limit: int = 20,
     sort_by: str = "created_at",
     order: str = "desc",
+    user_id: UUID | None = None,
     db: Session = Depends(get_db)
 ):
     if limit < 1:
         raise HTTPException(400, "Too low limit value")
     
-    total = db.query(func.count(Lecture.id)).scalar()
-    pages = math.ceil(total / limit)
+    filters = []
+    if user_id:
+        filters.append(Lecture.user_id == user_id)
+    
+    total = db.query(func.count(Lecture.id)).filter(*filters).scalar()
+    pages = math.ceil(total / limit) if total > 0 else 1
+    
     if page > pages or page < 1:
-        return LecturesPage(
-            items = [],
-            total = total,
-            page = page,
-            pages = pages
-        )
+        return LecturesPage(items=[], total=total, page=page, pages=pages)
 
     offset = (page - 1) * limit
 
@@ -39,16 +40,16 @@ async def get_lectures(
 
     sort_func = desc if order == "desc" else asc
     column = getattr(Lecture, sort_by)
-
-    query = db.query(Lecture).options(joinedload(Lecture.user))
+    
+    query = db.query(Lecture).filter(*filters).options(joinedload(Lecture.user))
     
     items = query.order_by(sort_func(column)).offset(offset).limit(limit).all()
 
     return LecturesPage(
-        items = items,
-        total = total,
-        page = page,
-        pages = pages
+        items=items,
+        total=total,
+        page=page,
+        pages=pages
     )
 
 @router.patch("/edit/{lecture_id}", response_model=LectureRead)
