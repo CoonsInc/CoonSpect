@@ -1,5 +1,7 @@
+// pages/MainPage.tsx
 import type { FC } from "react";
 import { useTextStore, useAuthStore, useAppStore } from "../stores";
+import { useNavigate } from "react-router-dom";
 import Header from "../components/organisms/Header";
 import UploadSection from "../components/organisms/UploadSection";
 import LoadingSection from "../components/organisms/LoadingSection";
@@ -10,10 +12,10 @@ import Footer from "../components/organisms/Footer";
 import { useEffect } from 'react';
 
 const MainPage: FC = () => {
+  const navigate = useNavigate();
   const { user } = useAuthStore();
   const { appState, setAppState } = useAppStore();
-  const { processedText, generateTranscript, progressStatus } = useTextStore();
-  const { isSaving } = useTextStore();
+  const { processedText, generateTranscript, progressStatus, isSaving, saveLectureChanges, reset } = useTextStore();
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -39,25 +41,31 @@ const MainPage: FC = () => {
       await generateTranscript(file);
       setAppState("editor");
     } catch (err) {
-      console.error("Ошибка при обработке аудио:", err);
       alert("Произошла ошибка при обработке аудио. Пожалуйста, попробуйте снова.");
       setAppState("upload");
     }
   };
 
-  const handleSave = (newText: string) => {
-    console.log("💾 Конспект сохранён. Длина:", newText.length);
-    alert("Конспект успешно сохранён!");
+  const handleSave = async (newText: string, title: string) => {
+    try {
+      await saveLectureChanges(newText, title);
+      alert("Конспект успешно сохранён!");
+    } catch (e) {
+      alert("Ошибка при сохранении. Попробуйте еще раз.");
+    }
   };
 
-  const handleAddToFiles = (newText: string, title: string) => {
-    console.log(`📦 Лекция "${title}" отправлена в файлы. Длина:`, newText.length);
-    alert(`Лекция "${title}" успешно сохранена в ваши файлы!`);
-    
-    // TODO: В будущем здесь будет:
-    // 1. Отправка на бэкенд или сохранение в глобальный стор
-    // 2. Очистка текущего состояния
-    // 3. Редирект пользователя на страницу каталога: navigate('/files')
+  const handleAddToFiles = async (newText: string, title: string) => {
+    try {
+      await saveLectureChanges(newText, title);
+      alert(`Лекция "${title}" успешно сохранена в ваши файлы!`);
+      
+      reset();
+      
+      navigate('/lectures');
+    } catch (e) {
+      alert("Не удалось сохранить файл в библиотеку.");
+    }
   };
 
   const renderContent = () => {
@@ -70,7 +78,7 @@ const MainPage: FC = () => {
             </div>
           </section>
         );
-      
+
       case "loading":
         return (
           <section className="relative flex flex-col justify-center items-center min-h-screen px-6 bg-gradient-to-b from-[var(--color-bg-accent)] to-[var(--color-bg-secondary)]">
@@ -79,19 +87,17 @@ const MainPage: FC = () => {
             </div>
           </section>
         );
-      
+
       case "editor":
         return (
-          <>
-            <EditorSection
-              initialText={processedText}
-              onSave={handleSave}
-              onAddToFiles={handleAddToFiles}
-              onBack={() => setAppState("upload")}
-            />
-          </>
+          <EditorSection
+            initialText={processedText}
+            onSave={handleSave}
+            onAddToFiles={handleAddToFiles}
+            onBack={() => setAppState("upload")}
+          />
         );
-      
+
       default:
         return null;
     }
@@ -100,9 +106,7 @@ const MainPage: FC = () => {
   return (
     <div className="bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] min-h-screen font-sans overflow-x-hidden">
       <Header />
-      
       {renderContent()} 
-      
       <HowItWorksSection />
       <ExamplesSection />
       <Footer />
