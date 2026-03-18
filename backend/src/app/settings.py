@@ -1,6 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import computed_field
-from typing import Optional
 
 class Settings(BaseSettings):
     # JWT
@@ -29,7 +28,7 @@ class Settings(BaseSettings):
 
     # Postgres
     POSTGRES_HOST: str = 'localhost'
-    POSTGRES_PORT: str = '5432'
+    POSTGRES_PORT: str = '5433'
     POSTGRES_USER: str = 'user'
     POSTGRES_PASSWORD: str = 'pwd1234'
     POSTGRES_DB: str = 'coonspect'
