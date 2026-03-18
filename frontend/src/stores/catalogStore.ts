@@ -1,7 +1,7 @@
 // stores/catalogStore.ts
 import { create } from 'zustand';
-import { getLecturesList, editLecture } from '../api/lecturesApi'; 
-import type { GetLecturesParams, LectureUpdate, LecturesPage, Lecture } from '../types/lecture';
+import { getLecturesList } from '../api/lecturesApi';
+import type { GetLecturesParams, Lecture, LecturesPage } from '../types/lecture';
 
 interface CatalogState {
   lectures: Lecture[];
@@ -15,9 +15,7 @@ interface CatalogState {
   currentParams: GetLecturesParams;
 
   fetchLectures: (params?: GetLecturesParams) => Promise<void>;
-  updateLecture: (id: string, updateData: LectureUpdate) => Promise<void>;
   setPage: (page: number) => void;
-  setSorting: (sortBy: string, order: 'asc' | 'desc') => void;
 }
 
 export const useCatalogStore = create<CatalogState>()((set, get) => ({
@@ -27,9 +25,10 @@ export const useCatalogStore = create<CatalogState>()((set, get) => ({
   totalPages: 1,
   isLoading: false,
   error: null,
+  
   currentParams: {
     page: 1,
-    limit: 10,
+    limit: 24, 
     sort_by: 'created_at',
     order: 'desc',
   },
@@ -56,23 +55,7 @@ export const useCatalogStore = create<CatalogState>()((set, get) => ({
     }
   },
 
-  updateLecture: async (id, updateData) => {
-    try {
-      await editLecture(id, updateData);
-      
-      // Самый простой способ обновить UI — перезапросить текущую страницу
-      await get().fetchLectures(); 
-    } catch (err: any) {
-      console.error('[FRONT] Edit lecture error:', err);
-      throw err;
-    }
-  },
-
   setPage: (page) => {
     get().fetchLectures({ page });
-  },
-
-  setSorting: (sort_by, order) => {
-    get().fetchLectures({ sort_by, order, page: 1 });
   },
 }));

@@ -1,5 +1,4 @@
 import { apiClient, WS_BASE_URL } from './index';
-//import type {Lecture} from "../types/lecture";
 
 export async function startAndTrackLectureTask(
   file: File,

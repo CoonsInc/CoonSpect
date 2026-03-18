@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { authApi } from '../api/authApi';
-import type { User } from '../api/authApi';
+import type { User } from '../types/users';
 
 interface AuthState {
   user: User | null;
@@ -29,9 +29,9 @@ export const useAuthStore = create<AuthState>()(
           const currentUser = await authApi.getCurrentUser();
           if (currentUser) {
             set({ user: currentUser });
-            console.log('✅ Пользователь авторизован:', currentUser.username);
+            console.log('Пользователь авторизован:', currentUser.username);
           } else {
-            console.log('⚠️ Пользователь не авторизован');
+            console.log('Пользователь не авторизован');
             set({ user: null });
           }
         } catch (error) {

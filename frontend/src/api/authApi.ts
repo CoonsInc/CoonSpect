@@ -1,14 +1,5 @@
 import { apiClient } from './index';
-
-export interface LoginPayload {
-  username: string;
-  password: string;
-}
-
-export interface User {
-  id: string;
-  username: string;
-}
+import type { LoginPayload, User } from '../types/users';
 
 export const authApi = {
   login: async (payload: LoginPayload): Promise<void> => {
