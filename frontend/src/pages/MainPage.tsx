@@ -15,7 +15,7 @@ const MainPage: FC = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const { appState, setAppState } = useAppStore();
-  const { processedText, generateTranscript, progressStatus, isSaving, saveLectureChanges, reset } = useTextStore();
+  const { processedText, generateTranscript, progressStatus, isSaving, saveLectureChanges } = useTextStore();
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -50,21 +50,10 @@ const MainPage: FC = () => {
     try {
       await saveLectureChanges(newText, title);
       alert("Конспект успешно сохранён!");
+
+      navigate("/lectures");
     } catch (e) {
       alert("Ошибка при сохранении. Попробуйте еще раз.");
-    }
-  };
-
-  const handleAddToFiles = async (newText: string, title: string) => {
-    try {
-      await saveLectureChanges(newText, title);
-      alert(`Лекция "${title}" успешно сохранена в ваши файлы!`);
-      
-      reset();
-      
-      navigate('/lectures');
-    } catch (e) {
-      alert("Не удалось сохранить файл в библиотеку.");
     }
   };
 
@@ -93,7 +82,6 @@ const MainPage: FC = () => {
           <EditorSection
             initialText={processedText}
             onSave={handleSave}
-            onAddToFiles={handleAddToFiles}
             onBack={() => setAppState("upload")}
           />
         );

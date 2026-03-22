@@ -18,7 +18,10 @@ export const authApi = {
     try {
       const res = await apiClient.get<User>('/user/me');
       return res.data;
-    } catch (error) {
+    } catch (error: any) {
+      if (error.response?.status === 401) {
+         return null; 
+      }
       return null;
     }
   },

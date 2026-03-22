@@ -1,4 +1,6 @@
 // src/types/lecture.ts
+import type { User } from "./users.ts";
+
 export interface GetLecturesParams {
     page?: number;
     limit?: number;
@@ -13,13 +15,9 @@ export interface LectureUpdate {
     text?: string;
 }
 
-export interface UserRead {
-    id: string;
-}
-
 export interface Lecture {
     id: string;
-    user: UserRead;
+    user: User;
     lecturer: string;
     name: string;
     audio_url: string;

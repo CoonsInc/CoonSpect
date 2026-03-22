@@ -11,24 +11,20 @@ import { copyToClipboard, applyFormat, parseMarkdownToHtml } from "../../utils/m
 interface EditorSectionProps {
   initialText: string;
   onSave: (newText: string, title: string) => void;
-  onAddToFiles?: (newText: string, title: string) => void;
   onBack?: () => void;
 }
 
 const EditorSection: React.FC<EditorSectionProps> = ({ 
   initialText,
   onSave,
-  onAddToFiles,
   onBack
 }) => {
-  // Достаем title и text из стора
   const { processedText, setProcessedText, lectureTitle: storeTitle, audioUrl, audioFile, isSaving } = useTextStore();
   
   const [text, setText] = useState(processedText || initialText);
   const [localTitle, setLocalTitle] = useState(storeTitle);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Синхронизация при обновлении данных извне
   useEffect(() => {
     setText(processedText || initialText);
   }, [processedText, initialText]);
@@ -42,24 +38,37 @@ const EditorSection: React.FC<EditorSectionProps> = ({
     setProcessedText(newText);
   };
 
-  const handleSaveClick = () => {
-    onSave(text, localTitle);
-  };
-
   const handleCopy = () => {
     copyToClipboard(text, textareaRef.current);
   };
 
-  const handleAddToFilesClick = () => {
+  const handleSaveClick = () => {
     if (!localTitle.trim()) {
-      alert("Пожалуйста, введите название лекции перед добавлением.");
+      alert("Пожалуйста, введите название лекции перед сохранением.");
+      return;
+    }
+    setProcessedText(text);
+    onSave(text, localTitle);
+  };
+
+  // Скачивание на ПК
+  const handleDownloadLocally = () => {
+    if (!localTitle.trim()) {
+      alert("Пожалуйста, введите название лекции перед скачиванием.");
       return;
     }
     
-    setProcessedText(text);
-    if (onAddToFiles) {
-      onAddToFiles(text, localTitle);
-    }
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${localTitle.replace(/\s+/g, '_')}.txt`; 
+    document.body.appendChild(link);
+    link.click();
+    
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const handleFormat = (type: 'bold' | 'italic' | 'list' | 'heading' | 'quote' | 'link') => {
@@ -128,8 +137,8 @@ const EditorSection: React.FC<EditorSectionProps> = ({
           <EditorToolbar 
             onFormat={handleFormat}
             onSave={handleSaveClick}
+            onDownload={handleDownloadLocally}
             onCopy={handleCopy}
-            onAddToFiles={handleAddToFilesClick}
           />
         </div>
 

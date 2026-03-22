@@ -11,9 +11,9 @@
 
   --color-drop-shadow-primary: #646cffaa;
 
-  --color-success: #10b981; /* зеленый для успеха */
-  --color-info: #3b82f6; /* синий для информации/загрузки */
-  --color-warning: #f59e0b; /* оранжевый для предупреждений */
+  --color-success: #10b981; 
+  --color-info: #3b82f6;
+  --color-warning: #f59e0b;
 }
 
 :root.dark {

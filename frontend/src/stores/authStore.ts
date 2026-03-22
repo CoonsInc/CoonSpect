@@ -30,6 +30,9 @@ export const useAuthStore = create<AuthState>()(
           if (currentUser) {
             set({ user: currentUser });
             console.log('Пользователь авторизован:', currentUser.username);
+            localStorage.removeItem('username');
+            localStorage.removeItem('password');
+            localStorage.removeItem('isRegister');
           } else {
             console.log('Пользователь не авторизован');
             set({ user: null });
@@ -56,7 +59,12 @@ export const useAuthStore = create<AuthState>()(
         try {
           await authApi.register({ username, password });
           const user = await authApi.getCurrentUser();
-          if (user) set({ user });
+          if (user) {
+            set({ user });
+            localStorage.removeItem('username');
+            localStorage.removeItem('password');
+            localStorage.removeItem('isRegister');
+          }
         } catch (error) {
           console.error('Ошибка регистрации', error);
           throw error;

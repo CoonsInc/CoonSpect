@@ -1,16 +1,18 @@
-// components/organisms/LecturesCatalog.tsx
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useCatalogStore, useTextStore, useAppStore } from '../../stores';
+import { useCatalogStore, useTextStore, useAppStore, useAuthStore } from '../../stores/';
 import Text from '../atoms/Text';
 import Button from '../atoms/Button';
 import Heading from '../atoms/Heading';
 import Icon from '../atoms/Icon';
+import LectureCard from '../molecules/LectureCard';
 
 const LecturesCatalog: React.FC = () => {
   const navigate = useNavigate();
   const { setAppState } = useAppStore();
   const { loadLecture } = useTextStore();
+
+  const { user } = useAuthStore();
   
   const { 
     lectures, 
@@ -23,15 +25,15 @@ const LecturesCatalog: React.FC = () => {
   } = useCatalogStore();
 
   useEffect(() => {
-    fetchLectures();
+    if (user?.id) {
+      fetchLectures({ user_id: user.id });
+    }
   }, [fetchLectures]);
 
   const handleOpenLecture = async (id: string) => {
     try {
       await loadLecture(id);
-      
       setAppState("editor");
-      
       navigate('/');
     } catch (e) {
       alert("Не удалось загрузить лекцию");
@@ -74,29 +76,11 @@ const LecturesCatalog: React.FC = () => {
       {/* Сетка карточек */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
         {lectures.map((lecture) => (
-          <div 
+          <LectureCard 
             key={lecture.id} 
-            onClick={() => handleOpenLecture(lecture.id)}
-            className="flex flex-col p-5 bg-[var(--color-bg-accent)] rounded-xl border border-[var(--color-border)] shadow-sm hover:shadow-md hover:border-[var(--color-text-purple)] transition-all cursor-pointer group"
-          >
-            <div className="mb-4">
-              <Heading level={4} className="text-lg font-semibold group-hover:text-[var(--color-text-purple)] transition-colors line-clamp-2">
-                {lecture.name || 'Лекция без названия'}
-              </Heading>
-              {lecture.lecturer && (
-                <Text className="text-sm text-[var(--color-text-secondary)] mt-1">
-                  Преподаватель: {lecture.lecturer}
-                </Text>
-              )}
-            </div>
-
-            <div className="mt-auto pt-4 border-t border-[var(--color-border)] flex items-center justify-between text-xs text-[var(--color-text-secondary)]">
-              <span>{new Date(lecture.created_at).toLocaleDateString('ru-RU')}</span>
-              <span className="flex items-center gap-1 group-hover:text-[var(--color-text-purple)] transition-colors">
-                Открыть <Icon name="ArrowRight" className="w-3 h-3" />
-              </span>
-            </div>
-          </div>
+            lecture={lecture} 
+            onClick={() => handleOpenLecture(lecture.id)} 
+          />
         ))}
       </div>
 
