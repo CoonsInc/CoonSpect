@@ -1,12 +1,15 @@
 from fastapi import FastAPI
-import logging
+import sys
+from loguru import logger
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='(%(name)s / %(funcName)s) [%(levelname)s] %(message)s'
+logger.remove()
+logger.add(
+    sys.stdout,
+    format="({time:HH:mm:ss}) [{name} / {function} {level}] {message}",
+    level="INFO",
+    enqueue=True
 )
 
-logger = logging.getLogger(__name__)
 app = FastAPI()
 
 @app.get("/")
