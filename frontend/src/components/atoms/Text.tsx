@@ -3,15 +3,15 @@
 interface TextProps {
   children: React.ReactNode;
   size?: "sm" | "base" | "lg";
-  color?: string;
   className?: string;
+  as?: "p" | "span" | "div";
 }
 
 const Text: React.FC<TextProps> = ({
   children,
   size = "base",
-  color = "text-gray-300",
   className = "",
+  as: Component = "p",
 }) => {
   const sizes = {
     sm: "text-sm",
@@ -20,9 +20,9 @@ const Text: React.FC<TextProps> = ({
   };
 
     return (
-        <p className={`${sizes[size]} ${color} ${className}`}>
-            {children}
-        </p>
+      <Component className={`${sizes[size]} text-[var(--color-text-secondary)] ${className}`}>
+        {children}
+      </Component>
     );
 };
 

@@ -1,11 +1,11 @@
 :root {
-  --color-bg-primary: #F8F9FA;
-  --color-bg-secondary: #E9ECEF;
+  --color-bg-primary: #edf1f5;
+  --color-bg-secondary: #F8F9FA;
   --color-bg-tertiary: #DEE2E6;
   --color-bg-accent: #FFFFFF; 
 
-  --color-text-primary: #16191c;
-  --color-text-secondary: #34383d;
+  --color-text-primary: #36393a;
+  --color-text-secondary: #55565f;
   --color-text-purple: #AD89ED;
   --color-border: #DEE2E6;
 

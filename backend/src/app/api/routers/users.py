@@ -1,32 +1,11 @@
-from fastapi import APIRouter, HTTPException, Depends
-from sqlalchemy.orm import Session
-from src.app.db.session import get_db
-from src.app.db.models.user import User
-from src.app.api.schemas.user import UserCreate, UserRead
-from passlib.context import CryptContext
+from fastapi import APIRouter, Depends
 
-router = APIRouter(prefix="/api/users", tags=["users"])
+from src.app.api.schemas.user import UserRead
+from src.app.clients.sql.models.user import User
+from src.app.api.tools import get_current_user
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+router = APIRouter(prefix="/user", tags=["user"])
 
-@router.post("/create", response_model=UserRead)
-def create_user(user_in: UserCreate, db: Session = Depends(get_db)):
-    """
-    Создать нового пользователя.
-    """
-    existing = db.query(User).filter(User.username == user_in.username).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="Username already exists")
-    
-    hashed_password = pwd_context.hash(user_in.password)
-
-    new_user = User(
-        username=user_in.username,
-        password_hash=hashed_password,
-        profile=user_in.profile,
-    )
-
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    return new_user
+@router.get("/me", response_model=UserRead)
+async def get_me(current_user: User = Depends(get_current_user)):
+    return current_user

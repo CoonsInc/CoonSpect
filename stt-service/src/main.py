@@ -1,41 +1,34 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from transcription import STTEngine
 import uvicorn
 import os
-from typing import List
+
+from settings import settings
+from schemas import RequestTranscribeSTT
+from s3 import download_from_s3, get_s3_client
 
 app = FastAPI(title="STT Microservice")
 
 stt_engine = STTEngine()
 
-ALLOWED_AUDIO_EXTENSIONS = {
-    '.wav', '.mp3', '.m4a', '.flac', '.aac', '.ogg', '.wma', '.aiff'
-}
-
-ALLOWED_VIDEO_EXTENSIONS = {
-    '.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv', '.webm', '.mpeg', '.mpg'
-}
-
 @app.post("/transcribe")
 async def transcribe_audio(
-    file: UploadFile = File(..., description="Аудио файл"),
-    language: str = "ru"
+    content: RequestTranscribeSTT,
+    language: str = "ru",
+    s3_client = Depends(get_s3_client)
 ):
-    
-    if os.path.splitext(file.filename.lower())[1] not in ALLOWED_AUDIO_EXTENSIONS.union(ALLOWED_VIDEO_EXTENSIONS):
-        raise HTTPException(
-            400, 
-            "Неподдерживаемый формат файла."
-        )
+    if os.path.splitext(content.filename.lower())[1] not in settings.ALLOWED_EXTENSIONS:
+        raise HTTPException(400, "Неподдерживаемый формат файла.")
         
     #в идеале проврека на размер но мне лень
     
-    file_type = "audio" if os.path.splitext(file.filename.lower())[1] in ALLOWED_AUDIO_EXTENSIONS else "video"
+    file_type = "audio" if os.path.splitext(content.filename.lower())[1] in settings.ALLOWED_AUDIO_EXTENSIONS else "video"
     
-    audio_bytes = await file.read()
+    tmp_file_path = await download_from_s3(s3_client, content.bucket, content.filename)
     
     try:
-        segmet_text = stt_engine.transcribe(audio_bytes, language, file_type)
+        file_size = tmp_file_path.stat().st_size
+        segmet_text = stt_engine.transcribe(tmp_file_path, language, file_type)
         full_text = " ".join(segment["text"] for segment in segmet_text["segments"])
         return {
             "status": "success",
@@ -44,7 +37,7 @@ async def transcribe_audio(
             "metadata": {
                 "file_type": file_type,
                 "language": language,
-                "file_size": len(audio_bytes)
+                "file_size": file_size
             }
         }
     except Exception as e:

@@ -1,8 +1,8 @@
-from enum import Enum
+from enum import StrEnum
 from pydantic import BaseModel
 from typing import Optional
 
-class StatusType(str, Enum):
+class StatusType(StrEnum):
     SUCCESS = "success"
     ERROR = "error"
 
@@ -17,4 +17,3 @@ class Status(BaseModel):
     @classmethod
     def error(cls, msg: Optional[str] = None) -> "Status":
         return cls(status=StatusType.ERROR, msg=msg)
-    

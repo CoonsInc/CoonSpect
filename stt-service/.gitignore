@@ -4,6 +4,7 @@
 *.m4a
 *.ogg
 *.zip
+*.txt
 *.tar
 __pycache__
 .venv

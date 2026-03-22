@@ -1,24 +1,32 @@
 from pydantic import BaseModel, ConfigDict
 from uuid import UUID
 from datetime import datetime
+from typing import Optional
 
-class LectureBase(BaseModel):
-    audio_url: str | None = None
-    text: str | None = None
-    segments_url: str | None = None
+from src.app.api.schemas.user import UserRead
 
-
-class LectureCreate(BaseModel):
-    user_id: UUID
-
-
-class LectureRead(LectureBase):
+class LectureRead(BaseModel):
     id: UUID
-    user_id: UUID
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
+    user: UserRead
+    lecturer: str
+    name: str
+    audio_url: str
+    text: str
+    created_at: datetime
+    updated_at: datetime
 
     model_config = ConfigDict(
         from_attributes=True,
         extra="ignore"
     )
+
+class LecturesPage(BaseModel):
+    items: list[LectureRead]
+    total: int
+    page: int
+    pages: int
+
+class LectureUpdate(BaseModel):
+    name: Optional[str] = None
+    lecturer: Optional[str] = None
+    text: Optional[str] = None

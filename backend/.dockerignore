@@ -1,2 +1,5 @@
 .venv
-test/
+.env
+__pycache__/
+dev-test/
+tests/

@@ -1,3 +1,4 @@
+
 interface InputProps {
   type?: string;
   value?: string;
@@ -21,7 +22,16 @@ const Input: React.FC<InputProps> = ({
     onChange={onChange}
     placeholder={placeholder}
     disabled={disabled}
-    className={`bg-[#16182D] text-white px-4 py-2 rounded-lg outline-none focus:ring-2 focus:ring-purple-500 ${disabled ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}
+    className={`
+      bg-[var(--color-bg-secondary)] 
+      text-[var(--color-text-primary)] 
+      placeholder:text-[var(--color-text-secondary)] 
+      px-4 py-2 rounded-lg 
+      outline-none focus:ring-2 focus:ring-[var(--color-text-purple)] 
+      disabled:opacity-50 disabled:cursor-not-allowed 
+      transition-all duration-200
+      ${className}
+    `}
   />
 );
 

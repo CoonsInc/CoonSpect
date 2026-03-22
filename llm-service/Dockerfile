@@ -1,7 +1,6 @@
-FROM ollama/ollama:latest
+FROM ollama/ollama:0.17.4
 
-RUN apt-get update && apt-get install -y python3 python3-pip
-RUN rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y python3 python3-pip && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 

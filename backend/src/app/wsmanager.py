@@ -17,6 +17,9 @@ class ConnectionManager:
     
     async def send_message(self, task_id: str, message: str):
         if task_id in self.active_connections:
+            print(f"[WS MANAGER] sending {message} to {task_id}")
             await self.active_connections[task_id].send_text(message)
+        else:
+            print(f"[WS MANAGER] ignoring {message} to unknown {task_id}")
 
 manager = ConnectionManager()

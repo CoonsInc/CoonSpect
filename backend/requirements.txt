@@ -1,10 +1,11 @@
-fastapi[all]==0.117.1
-alembic 
+fastapi[all]==0.135.1
+alembic
 psycopg2-binary
 celery
 redis
 aiohttp
 requests
-passlib[bcrypt]
+passlib[argon2]==1.7.4
 pytest
-passlib
+PyJWT
+aioboto3
