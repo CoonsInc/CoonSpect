@@ -1,8 +1,5 @@
 import { apiClient, WS_BASE_URL } from './index';
 
-// const isUUID = (value: string) =>
-//     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-
 export async function startAndTrackLectureTask(
   file: File,
   onStatusChange?: (status: string) => void
@@ -69,7 +66,7 @@ export async function startAndTrackLectureTask(
 
 export async function getLectureResult(lectureId: string) {
   console.log(`[FRONT] Requesting result for lecture ${lectureId}`);
-  const res = await apiClient.get(`/lectures/${lectureId}`);
+  const res = await apiClient.get(`/lecture/${lectureId}`);
   console.log(`[FRONT] Result received for lecture ${lectureId}`);
   return res.data;
 }

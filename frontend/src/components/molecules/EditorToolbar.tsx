@@ -5,12 +5,12 @@ import Icon from "../atoms/Icon";
 
 interface EditorToolbarProps {
   onFormat: (type: "bold" | "italic" | "list" | "heading" | "quote" | "link") => void;
-  onAddToFiles?: () => void;
+  onDownload?: () => void;
   onSave?: () => void;
   onCopy?: () => void;
 }
 
-const EditorToolbar: React.FC<EditorToolbarProps> = ({ onFormat, onSave, onCopy, onAddToFiles }) => {
+const EditorToolbar: React.FC<EditorToolbarProps> = ({ onFormat, onSave, onCopy, onDownload }) => {
   const formatButtons = [
     { icon: "Bold", action: "bold", title: "Жирный текст" },
     { icon: "Italic", action: "italic", title: "Курсив" },
@@ -21,9 +21,9 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({ onFormat, onSave, onCopy,
   ] as const;
 
   const actionButtons = [
-    { icon: "FolderPlus", action: onAddToFiles, show: onAddToFiles },
-    { icon: "Copy", action: onCopy, show: onCopy },
-    { icon: "Save", action: onSave, show: onSave },
+    { icon: "Download", action: onDownload, show: onDownload, title: "Скачать на ПК" }, // <-- Новая кнопка
+    { icon: "Copy", action: onCopy, show: onCopy, title: "Скопировать текст" },
+    { icon: "Save", action: onSave, show: onSave, title: "Сохранить на сервер" },
   ] as const;
 
   return (
@@ -37,23 +37,24 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({ onFormat, onSave, onCopy,
             onClick={() => onFormat(action)}
             title={title}
           >
-            <Icon name={icon} className="w-4 h-4" />
+            <Icon name={icon as any} className="w-4 h-4" />
           </Button>
         ))}
       </div>
 
       <div className="flex items-center gap-1">
         {actionButtons.map(
-          ({ icon, action, show }) =>
+          ({ icon, action, show, title }) =>
             show && (
               <Button
                 key={icon}
                 onClick={action}
                 variant="outline"
                 size="sm"
+                title={title}
                 className="border-[var(--color-text-purple)] text-[var(--color-text-purple)] hover:bg-[var(--color-text-purple)] hover:text-white"
               >
-                <Icon name={icon} className="w-4 h-4" />
+                <Icon name={icon as any} className="w-4 h-4" />
               </Button>
             )
         )}
