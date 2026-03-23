@@ -71,7 +71,7 @@ const EditorSection: React.FC<EditorSectionProps> = ({
     URL.revokeObjectURL(url);
   };
 
-  const handleFormat = (type: 'bold' | 'italic' | 'list' | 'heading' | 'quote' | 'link') => {
+  const handleFormat = (type: 'bold' | 'italic' | 'list' | 'heading' | 'quote' | 'link' | "divider") => {
     if (!textareaRef.current) return;
     const textarea = textareaRef.current;
     const start = textarea.selectionStart;
