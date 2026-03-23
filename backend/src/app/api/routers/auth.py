@@ -73,10 +73,10 @@ async def refresh(request: Request, response: Response):
     
     token_data = decode_token(refresh_token, TokenType.REFRESH)
     
-    ttl = max((token_data.expire - datetime.now(timezone.utc)).seconds, 1)
+    ttl = max(int((token_data.expire - datetime.now(timezone.utc).replace(tzinfo=None)).total_seconds()), 1)
     redis.setex(f"blacklist:{refresh_token}", ttl, "true")
 
-    tokens = generate_tokens(token_data.sub)
+    tokens = generate_tokens(token_data.uuid)
     
     response.set_cookie(key="access_token", value=tokens.access_token, **COOKIE_PARAMS)
     response.set_cookie(
@@ -95,14 +95,14 @@ async def logout(request: Request, response: Response):
     if access_token:
         try:
             data = decode_token(access_token, TokenType.ACCESS)
-            ttl = max((data.expire - datetime.now(timezone.utc)).seconds, 1)
+            ttl = max(int((data.expire - datetime.now(timezone.utc).replace(tzinfo=None)).total_seconds()), 1)
             redis.setex(f"blacklist:{access_token}", ttl, "true")
         except: pass
     
     if refresh_token:
         try:
             data = decode_token(refresh_token, TokenType.REFRESH)
-            ttl = max((data.expire - datetime.now(timezone.utc)).seconds, 1)
+            ttl = max(int((data.expire - datetime.now(timezone.utc).replace(tzinfo=None)).total_seconds()), 1)
             redis.setex(f"blacklist:{refresh_token}", ttl, "true")
         except: pass
     

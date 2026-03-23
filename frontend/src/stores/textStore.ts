@@ -1,22 +1,29 @@
+// stores/textStore.ts
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { startAndTrackLectureTask, getLectureResult } from '../api/generateApi';
+import { editLecture } from '../api/lecturesApi'
 
 interface AudioState {
   audioFile: File | null;
   audioUrl: string | null;
-  isSaving: boolean;
+  
+  activeLectureId: string | null;
+  lectureTitle: string;
   processedText: string;
+  
+  isSaving: boolean;
   progressStatus: string | null;
 
   setAudioFile: (file: File | null) => void;
-  setIsSaving: (saving: boolean) => void;
+  setLectureTitle: (title: string) => void;
   setProcessedText: (text: string) => void;
-  setProgressStatus: (status: string | null) => void;
   reset: () => void;
   clearAudioFile: () => void;
 
   generateTranscript: (file: File) => Promise<void>;
+  loadLecture: (id: string) => Promise<void>;
+  saveLectureChanges: (text: string, title: string) => Promise<void>;
 }
 
 export const useTextStore = create<AudioState>()(
@@ -24,8 +31,10 @@ export const useTextStore = create<AudioState>()(
     (set, get) => ({
       audioFile: null,
       audioUrl: null,
-      isSaving: false,
+      activeLectureId: null,
+      lectureTitle: '',
       processedText: '',
+      isSaving: false,
       progressStatus: null,
 
       setAudioFile: (file) => {
@@ -34,21 +43,23 @@ export const useTextStore = create<AudioState>()(
 
         if (file) {
           const audioUrl = URL.createObjectURL(file);
-          set({ audioFile: file, audioUrl });
+          const defaultTitle = file.name.replace(/\.[^/.]+$/, "");
+          set({ audioFile: file, audioUrl, lectureTitle: defaultTitle });
         } else {
-          set({ audioFile: null, audioUrl: null });
+          set({ audioFile: null, audioUrl: null, lectureTitle: '' });
         }
       },
 
-      setIsSaving: (isSaving) => set({ isSaving }),
+      setLectureTitle: (title) => set({ lectureTitle: title }),
       setProcessedText: (text) => set({ processedText: text }),
-      setProgressStatus: (status) => set({ progressStatus: status }),
 
       reset: () => set({
         audioFile: null,
         audioUrl: null,
-        isSaving: false,
+        activeLectureId: null,
+        lectureTitle: '',
         processedText: '',
+        isSaving: false,
         progressStatus: null,
       }),
 
@@ -67,27 +78,65 @@ export const useTextStore = create<AudioState>()(
             (status) => set({ progressStatus: status })
           );
 
-          console.log('[FRONT] lecture_id received:', lectureId);
-
           const lecture = await getLectureResult(lectureId);
-          
           const text = lecture.text || lecture.transcription || ''; 
           
-          set({ processedText: text, progressStatus: 'finish' });
+          set({ 
+            activeLectureId: lectureId,
+            processedText: text, 
+            lectureTitle: lecture.name || get().lectureTitle,
+            progressStatus: 'finish' 
+          });
 
         } catch (e) {
           console.error('[FRONT] Audio processing error:', e);
+          set({ progressStatus: 'error' });
+          throw e;
+        } finally {
+          set({ isSaving: false });
+        }
+      },
+
+      loadLecture: async (id: string) => {
+        set({ isSaving: true, progressStatus: 'loading' });
+        try {
+          const lecture = await getLectureResult(id);
+          set({
+            activeLectureId: lecture.id,
+            lectureTitle: lecture.name || '',
+            processedText: lecture.text || lecture.transcription || '',
+            progressStatus: 'finish'
+          });
+        } catch (e) {
+          console.error('[FRONT] Failed to load lecture:', e);
           set({ progressStatus: 'error' });
         } finally {
           set({ isSaving: false });
         }
       },
+
+      saveLectureChanges: async (text: string, title: string) => {
+        const id = get().activeLectureId;
+        if (!id) throw new Error("Нет активной лекции для сохранения");
+
+        set({ isSaving: true });
+        try {
+          await editLecture(id, { name: title, text: text });
+          set({ processedText: text, lectureTitle: title });
+        } catch (e) {
+          console.error('[FRONT] Failed to save lecture:', e);
+          throw e;
+        } finally {
+          set({ isSaving: false });
+        }
+      }
     }),
     {
       name: 'audio-storage',
       partialize: (state) => ({
+        activeLectureId: state.activeLectureId,
+        lectureTitle: state.lectureTitle,
         processedText: state.processedText,
-        progressStatus: state.progressStatus,
       }),
     }
   )

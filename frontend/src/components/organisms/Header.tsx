@@ -69,7 +69,7 @@ const Header: React.FC = () => {
     { id: "hero", label: "Главная", icon: Home, mobileOnly: false },
     { id: "how", label: "Как это работает", icon: FileText, mobileOnly: false },
     { id: "examples", label: "Примеры", icon: Upload, mobileOnly: false },
-    { path: "/lectures", label: "Мои файлы", icon: FileText, mobileOnly: false },
+    { path: "/lectures", label: "Мои лекции", icon: FileText, mobileOnly: false },
   ];
 
   return (
