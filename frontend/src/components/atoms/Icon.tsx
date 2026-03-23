@@ -3,7 +3,7 @@ import {
   Bold, Italic, List, Heading, Quote, Link, Save, Copy,
   LogOut, FileText, Home, Sun, Moon, Menu, User, LogIn,
   Brain, Languages, ScanEye, Network, Clock, FolderPlus, Plus, DockIcon, 
-  ArrowRight
+  ArrowRight, Minus
 } from "lucide-react";
 
 export type IconName = 
@@ -11,7 +11,7 @@ export type IconName =
   | "Bold" | "Italic" | "List" | "Heading" | "Quote" | "Link" | "Save" | "Copy"
   | "LogOut" | "FileText" | "Home" | "Sun" | "Moon" | "Menu" | "User" | "LogIn"
   | "Brain" | "Languages" | "ScanEye" | "Network" | "Clock" | "FolderPlus" | "Plus" 
-  | "DockIcon" | "ArrowRight";
+  | "DockIcon" | "ArrowRight" | "Minus";
 
 interface IconProps {
   name: IconName;
@@ -24,7 +24,7 @@ const Icon: React.FC<IconProps> = ({ name, className = "w-5 h-5" }) => {
     Bold, Italic, List, Heading, Quote, Link, Save, Copy,
     LogOut, FileText, Home, Sun, Moon, Menu, User, LogIn,
     Brain, Languages, ScanEye, Network, Clock, FolderPlus, Plus, DockIcon, 
-    ArrowRight
+    ArrowRight, Minus
   };
 
   const IconComponent = icons[name];

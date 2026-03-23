@@ -4,7 +4,7 @@ import Button from "../atoms/Button";
 import Icon from "../atoms/Icon";
 
 interface EditorToolbarProps {
-  onFormat: (type: "bold" | "italic" | "list" | "heading" | "quote" | "link") => void;
+  onFormat: (type: "bold" | "italic" | "list" | "heading" | "quote" | "link" | "divider") => void;
   onDownload?: () => void;
   onSave?: () => void;
   onCopy?: () => void;
@@ -18,6 +18,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({ onFormat, onSave, onCopy,
     { icon: "Heading", action: "heading", title: "Заголовок" },
     { icon: "Quote", action: "quote", title: "Цитата" },
     { icon: "Link", action: "link", title: "Ссылка" },
+    { icon: "Minus", action: "divider", title: "Разделитель" },
   ] as const;
 
   const actionButtons = [
