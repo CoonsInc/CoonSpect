@@ -1,14 +1,5 @@
 import { apiClient } from './index';
-
-export interface LoginPayload {
-  username: string;
-  password: string;
-}
-
-export interface User {
-  id: string;
-  username: string;
-}
+import type { LoginPayload, User } from '../types/users';
 
 export const authApi = {
   login: async (payload: LoginPayload): Promise<void> => {
@@ -27,7 +18,10 @@ export const authApi = {
     try {
       const res = await apiClient.get<User>('/user/me');
       return res.data;
-    } catch (error) {
+    } catch (error: any) {
+      if (error.response?.status === 401) {
+         return null; 
+      }
       return null;
     }
   },

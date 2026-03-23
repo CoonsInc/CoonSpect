@@ -20,7 +20,8 @@ const LoginPage = () => {
       await authFn(username, password);
       navigate('/upload');
     } catch (error) {
-      console.error('Auth error:', error);
+      console.error('Auth error:', error); 
+      throw error;
     } finally {
       setAuthLoading(false);
     }
