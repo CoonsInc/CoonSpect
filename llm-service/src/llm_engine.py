@@ -61,7 +61,7 @@ class LLMEngine:
                         )
 
                         context_parts = []
-                        score_threshold = 0.6
+                        score_threshold = 0.91
 
                         for hit in search_response.points:
                             if hit.score < score_threshold:
@@ -78,7 +78,9 @@ class LLMEngine:
                             source_info = f"{book_title} (стр. {page})"
                             used_sources.add(source_info)
                             
-                            context_parts.append(f"--- Источник: {source_info} (score: {hit.score:.2f}) ---\n{chunk_text}")
+                            rag_chunk = f"--- Источник: {source_info} (score: {hit.score:.2f}) ---\n{chunk_text}"
+                            print(rag_chunk)
+                            context_parts.append(rag_chunk)
 
                         if context_parts:
                             context_text = "Дополнительная информация из базы знаний:\n" + "\n\n".join(context_parts) + "\n\n"
