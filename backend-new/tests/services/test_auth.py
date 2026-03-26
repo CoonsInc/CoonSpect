@@ -1,93 +1,110 @@
 import pytest
-from unittest.mock import MagicMock, patch, AsyncMock
-from fastapi import HTTPException, Response, Request
+from unittest.mock import AsyncMock, MagicMock
+from uuid import uuid4, UUID
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from redis.asyncio import Redis
-from uuid import uuid4
-from typing import Any
 
-from src.services.auth import create_auth_cookie, authorize, block_auth_cookie
-from src.services.token import Token, TokenType
+from src.services.auth import AuthService, AuthTokens
+from src.services.token import TokenService
+from src.services.password import PasswordService
+from src.crud.user import UserCRUD
+from src.api.schemas.user import UserCreate
+from src.infra.sql.models.user import User
+from src.models.token import Token, TokenType
 
-@pytest.mark.asyncio
-async def test_create_auth_cookie():
-    response = MagicMock(spec=Response)
-    user_uuid = uuid4()
+@pytest.fixture
+def auth_service(db_session: AsyncSession) -> AuthService:
+    """Фабрика сервиса с моками для внешних зависимостей."""
+    user_crud = UserCRUD(db_session)
+    token_service = AsyncMock(spec=TokenService)
+    password_service = MagicMock(spec=PasswordService)
     
-    create_auth_cookie(user_uuid, response)
-    
-    assert response.set_cookie.call_count == 2
-    calls = response.set_cookie.call_args_list
-    keys = [call.kwargs["key"] for call in calls]
-    assert "access_token" in keys
-    assert "refresh_token" in keys
-
-@pytest.mark.asyncio
-async def test_authorize_success(mock_redis: Redis, db_session: AsyncSession):
-    """Успешная авторизация по валидному токену."""
-    user_uuid = uuid4()
-    token = Token.from_type(user_uuid, TokenType.ACCESS).encode()
-    
-    request = MagicMock(spec=Request)
-    request.cookies = {"access_token": token}
-    
-    mock_user = MagicMock()
-    mock_user.uuid = user_uuid
-    
-    mock_redis.exists.return_value = False # type: ignore
-    
-    # ПАТЧ: используем AsyncMock для асинхронного CRUD
-    with patch("src.crud.user.get_by_id", new_callable=AsyncMock) as mock_get_by_id:
-        mock_get_by_id.return_value = mock_user
-        
-        # Передаем реальную сессию db_session
-        user = await authorize(request, db=db_session)
-        
-        assert user.uuid == user_uuid
-        # ПРОВЕРКА: ждем асинхронного вызова
-        mock_get_by_id.assert_awaited_once_with(db_session, user_uuid)
+    return AuthService(
+        user_crud=user_crud, 
+        token_service=token_service, 
+        password_service=password_service
+    )
 
 @pytest.mark.asyncio
-async def test_authorize_no_token_raises_401(db_session):
-    """Ошибка 401, если кука access_token отсутствует."""
-    request = MagicMock(spec=Request)
-    request.cookies = {}
+async def test_register_flow(
+    auth_service: AuthService, 
+) -> None:
+    auth_service.password_service.hash_password.return_value = "hashed_pw" # type: ignore
     
-    with pytest.raises(HTTPException) as exc:
-        await authorize(request, db=db_session)
+    user_in = UserCreate(username="new_user", password="plain_password")
+
+    mock_token_obj = MagicMock()
+    mock_token_obj.encode.return_value = "encoded_jwt"
+    auth_service.token_service.create_token.return_value = mock_token_obj # type: ignore
+
+    result: AuthTokens = await auth_service.register(user_in)
     
-    assert exc.value.status_code == 401
-    assert "Not authenticated" in exc.value.detail
+    assert result.access_token == "encoded_jwt"
+    assert result.refresh_token == "encoded_jwt"
+    auth_service.password_service.hash_password.assert_called_once_with("plain_password") # type: ignore
 
 @pytest.mark.asyncio
-async def test_block_auth_cookie(mock_redis):
-    user_uuid = uuid4()
-    access = Token.from_type(user_uuid, TokenType.ACCESS).encode()
-    refresh = Token.from_type(user_uuid, TokenType.REFRESH).encode()
+async def test_login_success(
+    auth_service: AuthService, 
+    db_session: AsyncSession
+) -> None:
+    user_id: UUID = uuid4()
+    user = User(id=user_id, username="login_user", password_hash="hashed_abc")
+    db_session.add(user)
+    await db_session.commit()
     
-    request = MagicMock(spec=Request)
-    request.cookies = {"access_token": access, "refresh_token": refresh}
-    response = MagicMock(spec=Response)
+    auth_service.password_service.verify_password.return_value = True # type: ignore
     
-    mock_redis.exists.return_value = False
+    # Мокаем объект токена, который возвращает create_token
+    mock_token_obj = MagicMock()
+    mock_token_obj.encode.return_value = "encoded_jwt"
+    auth_service.token_service.create_token.return_value = mock_token_obj # type: ignore
     
-    returned_uuid = await block_auth_cookie(request, response)
+    login_data = UserCreate(username="login_user", password="correct_password")
+    result: AuthTokens = await auth_service.login(login_data)
     
-    assert returned_uuid == user_uuid
-    assert response.delete_cookie.call_count == 2
-    assert mock_redis.setex.call_count == 2
+    assert result.user_id == user_id
+    assert result.access_token == "encoded_jwt"
+    auth_service.password_service.verify_password.assert_called_once() # type: ignore
 
 @pytest.mark.asyncio
-async def test_authorize_invalid_token_type(mock_redis, db_session: AsyncSession):
-    user_uuid = uuid4()
-    wrong_token = Token.from_type(user_uuid, TokenType.REFRESH).encode()
+async def test_authorize_success(
+    auth_service: AuthService, 
+    db_session: AsyncSession
+) -> None:
+    user_id: UUID = uuid4()
+    user = User(id=user_id, username="auth_me", password_hash="...")
+    db_session.add(user)
+    await db_session.commit()
     
-    request = MagicMock(spec=Request)
-    request.cookies = {"access_token": wrong_token}
-    mock_redis.exists.return_value = False
+    # Теперь expire — это честный datetime в будущем
+    exp_time = datetime.now(timezone.utc) + timedelta(minutes=15)
+    mock_token_data = Token(user_id, exp_time, TokenType.ACCESS)
     
-    with pytest.raises(HTTPException) as exc:
-        await authorize(request, db=db_session)
+    auth_service.token_service.decode_and_validate.return_value = mock_token_data # type: ignore
     
-    assert exc.value.status_code == 401
-    assert f"Expected \"{TokenType.ACCESS}\" token" in exc.value.detail
+    authorized_user: User = await auth_service.authorize("some_token")
+    
+    assert authorized_user.id == user_id
+    assert authorized_user.username == "auth_me"
+
+@pytest.mark.asyncio
+async def test_logout_logic(
+    auth_service: AuthService,
+) -> None:
+    user_id: UUID = uuid4()
+    now = datetime.now(timezone.utc)
+    
+    # Инициализируем токены с datetime
+    refresh_data = Token(user_id, now + timedelta(days=7), TokenType.REFRESH)
+    access_data = Token(user_id, now + timedelta(minutes=15), TokenType.ACCESS)
+    
+    auth_service.token_service.decode_and_validate.side_effect = [ # type: ignore
+        refresh_data, 
+        access_data
+    ]
+    
+    await auth_service.logout(access_raw="access", refresh_raw="refresh")
+    
+    assert auth_service.token_service.add_to_blacklist.call_count == 2 # type: ignore

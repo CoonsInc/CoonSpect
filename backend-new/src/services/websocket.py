@@ -1,5 +1,6 @@
 from fastapi import WebSocket, WebSocketDisconnect
 from loguru import logger
+import asyncio
 
 class WebSocketManager:
     """Менеджер WebSocket-соединений."""
@@ -22,14 +23,16 @@ class WebSocketManager:
     async def disconnect(self, task_id: str) -> None:
         """Закрывает и удаляет соединение."""
         ws = self._connections.pop(task_id, None)
-        if ws:
-            try:
-                await ws.close()
-            except Exception as e:
-                logger.warning(f"Error while disconnecting task_id={task_id}: {e}")
-            logger.info(f"Disconnected task_id={task_id}")
-        else:
+
+        if ws is None:
             logger.warning(f"Disconnecting unknown task_id={task_id}")
+            return
+        
+        try:
+            await ws.close()
+        except Exception as e:
+            logger.warning(f"Error while disconnecting task_id={task_id}: {e}")
+        logger.info(f"Disconnected task_id={task_id}")
     
     async def send_message(self, task_id: str, message: str) -> None:
         """Отправляет сообщение напрямую."""
@@ -53,9 +56,15 @@ class WebSocketManager:
         return task_id in self._connections
     
     async def cleanup_all(self) -> None:
-        """Закрывает все соединения."""
-        for task_id in list(self._connections.keys()):
-            await self.disconnect(task_id)
-        logger.info("All WebSocket connections closed")
+        """Массовое закрытие всех соединений (например, при выключении сервера)."""
+        if not self._connections:
+            return
+            
+        tasks = [self.disconnect(tid) for tid in list(self._connections.keys())]
+        await asyncio.gather(*tasks)
+        logger.info("All WebSocket connections cleaned up")
 
-wsmanager = WebSocketManager()
+_manager = WebSocketManager()
+
+def get_ws_manager() -> WebSocketManager:
+    return _manager

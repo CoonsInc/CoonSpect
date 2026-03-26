@@ -1,20 +1,22 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from uuid import UUID
+from fastapi import Depends
+
+from src.crud.base import BaseCRUD
 from src.infra.sql.models.user import User
-from src.services.password import hash_password
+from src.infra.sql.session import get_db
 
-async def get_by_username(db: AsyncSession, username: str) -> User | None:
-    result = await db.execute(select(User).where(User.username == username))
-    return result.scalars().first()
+class UserCRUD(BaseCRUD[User]):
+    def __init__(self, db: AsyncSession):
+        super().__init__(User, db)
 
-async def get_by_id(db: AsyncSession, user_id: UUID) -> User | None:
-    result = await db.execute(select(User).where(User.id == user_id))
-    return result.scalars().first()
+    async def read_by_username(self, username: str) -> User | None:
+        """Уникальный поиск для логина."""
+        stmt = select(User).where(User.username == username)
+        result = await self.db.execute(stmt)
+        return result.scalars().first()
 
-async def create(db: AsyncSession, username: str, password_raw: str) -> User:
-    user = User(username=username, password_hash=hash_password(password_raw))
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
-    return user
+async def get_user_crud(
+    db: AsyncSession = Depends(get_db)
+) -> UserCRUD:
+    return UserCRUD(db)

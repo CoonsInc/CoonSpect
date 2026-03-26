@@ -1,67 +1,77 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, Request
-from sqlalchemy.ext.asyncio import AsyncSession
-from uuid import UUID
-from typing import cast
-
+from fastapi import APIRouter, Depends, Response, Request
 from src.api.schemas.user import UserCreate
 from src.api.schemas.status import Status
-from src.infra.sql.session import get_db
-from src.services.auth import create_auth_cookie, block_auth_cookie
-from src.services.password import verify_password
-import src.crud.user as user_crud
-from src.infra.redis import redis
+from src.services.auth import AuthService, get_auth_service, AuthTokens
+from src.settings import settings
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
+COOKIE_PARAMS = {
+    "httponly": True,
+    "samesite": "lax",
+    "secure": False,  # В проде переключить в True
+}
+
+def set_auth_cookies(response: Response, tokens: AuthTokens) -> None:
+    """Хелпер для установки кук в ответ."""
+    response.set_cookie(
+        key="access_token",
+        value=tokens.access_token,
+        max_age=settings.JWT_ACCESS_EXPIRE_MINUTES * 60,
+        **COOKIE_PARAMS
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=tokens.refresh_token,
+        max_age=settings.JWT_REFRESH_EXPIRE_DAYS * 86400,
+        **COOKIE_PARAMS
+    )
+
+def delete_auth_cookies(response: Response) -> None:
+    """Хелпер для удаления кук."""
+    response.delete_cookie(key="access_token", path="/")
+    response.delete_cookie(key="refresh_token", path="/")
+
 @router.post("/register")
 async def register(
-    content: UserCreate,
-    response: Response,
-    db: AsyncSession = Depends(get_db)
+    content: UserCreate, 
+    response: Response, 
+    service: AuthService = Depends(get_auth_service)
 ):
-    if user_crud.get_by_username(db, content.username):
-        raise HTTPException(status_code=400, detail="Username already exists")
-    
-    user = await user_crud.create(db, content.username, content.password)
-    
-    create_auth_cookie(cast(UUID, user.id), response)
-
+    tokens = await service.register(content)
+    set_auth_cookies(response, tokens)
     return Status.success()
 
 @router.post("/login")
 async def login(
-    content: UserCreate,
-    response: Response,
-    db: AsyncSession = Depends(get_db)
+    content: UserCreate, 
+    response: Response, 
+    service: AuthService = Depends(get_auth_service)
 ):
-    user = await user_crud.get_by_username(db, content.username)
-    if user is None or not verify_password(content.password, cast(str, user.password_hash)):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    
-    create_auth_cookie(cast(UUID, user.id), response)
+    tokens = await service.login(content)
+    set_auth_cookies(response, tokens)
     return Status.success()
 
 @router.post("/refresh")
 async def refresh(
-    request: Request,
-    response: Response
+    request: Request, 
+    response: Response, 
+    service: AuthService = Depends(get_auth_service)
 ):
-    refresh_token = request.cookies.get("refresh_token")
-    if refresh_token is None:
-        raise HTTPException(status_code=401, detail="Refresh token not found")
-    
-    if await redis.get(f"blacklist:{refresh_token}"):
-        raise HTTPException(status_code=401, detail="Token revoked")
-    
-    user_id = await block_auth_cookie(request, response)
-    create_auth_cookie(cast(UUID, user_id), response)
-    
+    old_refresh = request.cookies.get("refresh_token")
+    new_tokens = await service.refresh(old_refresh)
+    set_auth_cookies(response, new_tokens)
     return Status.success()
 
 @router.post("/logout")
 async def logout(
-    request: Request,
-    response: Response
+    request: Request, 
+    response: Response, 
+    service: AuthService = Depends(get_auth_service)
 ):
-    await block_auth_cookie(request, response)
+    await service.logout(
+        access_raw = request.cookies.get("access_token"),
+        refresh_raw = request.cookies.get("refresh_token")
+    )
+    delete_auth_cookies(response)
     return Status.success()

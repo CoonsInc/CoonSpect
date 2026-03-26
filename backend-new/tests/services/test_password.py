@@ -1,38 +1,44 @@
 import pytest
-from src.services.password import hash_password, verify_password
+from src.services.password import PasswordService
 
-def test_hash_password_creates_different_hashes():
-    password = "secret_password_123"
-    
-    hash1 = hash_password(password)
-    hash2 = hash_password(password)
-    
-    # Bcrypt использует соль, поэтому хэши для одного пароля должны быть разными
-    assert hash1 != hash2
-    assert hash1.startswith("$2b$")  # Стандартный префикс bcrypt
-    assert hash2.startswith("$2b$")
+@pytest.fixture
+def password_service() -> PasswordService:
+    return PasswordService()
 
-def test_verify_password_success():
+def test_hash_password_success(password_service: PasswordService) -> None:
+    """Проверка, что пароль хешируется и не сохраняется в открытом виде."""
+    password = "my_super_secret_123"
+    hashed = password_service.hash_password(password)
+    
+    assert hashed != password
+    assert len(hashed) > 20  # Хеши bcrypt обычно длинные
+    # Проверяем, что это валидный bcrypt хеш (начинается с $2b$)
+    assert hashed.startswith("$2b$")
+
+def test_verify_password_correct(password_service: PasswordService) -> None:
+    """Проверка успешной верификации правильного пароля."""
     password = "correct_password"
-    hashed = hash_password(password)
+    hashed = password_service.hash_password(password)
     
-    assert verify_password(password, hashed) is True
+    assert password_service.verify_password(password, hashed) is True
 
-def test_verify_password_failure():
-    password = "correct_password"
-    wrong_password = "wrong_password"
-    hashed = hash_password(password)
+def test_verify_password_incorrect(password_service: PasswordService) -> None:
+    """Проверка, что неверный пароль не проходит верификацию."""
+    password = "secret"
+    other_password = "wrong"
+    hashed = password_service.hash_password(password)
     
-    assert verify_password(wrong_password, hashed) is False
+    assert password_service.verify_password(other_password, hashed) is False
 
-@pytest.mark.parametrize("empty_input", ["", " ", "\n"])
-def test_password_with_empty_strings(empty_input):
-    # Проверяем, что сервис адекватно обрабатывает пустые или странные строки
-    hashed = hash_password(empty_input)
-    assert verify_password(empty_input, hashed) is True
+def test_hash_password_empty_raises_error(password_service: PasswordService) -> None:
+    """Проверка выброса исключения при пустом пароле."""
+    with pytest.raises(ValueError) as exc:
+        password_service.hash_password("")
+    
+    assert str(exc.value) == "Password cannot be empty"
 
-def test_verify_password_invalid_hash_format():
-    # Проверяем поведение при передаче некорректного хэша
-    # Bcrypt выбросит ValueError, если строка не является валидным хэшем
-    with pytest.raises(ValueError):
-        verify_password("password", "not_a_bcrypt_hash")
+def test_verify_invalid_hash_format(password_service: PasswordService) -> None:
+    """Проверка устойчивости к битому формату хеша."""
+    # Передаем строку, которая точно не является bcrypt-хешем
+    assert password_service.verify_password("any", "not_a_hash") is False
+    assert password_service.verify_password("any", "") is False

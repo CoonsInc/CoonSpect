@@ -4,8 +4,8 @@ class Settings(BaseSettings):
     # JWT
     JWT_SECRET_KEY: str = "your-super-secret-key-change-in-prod"
     JWT_ALGORITHM: str = "HS256"
-    JWT_ACCESS_EXPIRE_MINUTES: int = 30 * 60
-    JWT_REFRESH_EXPIRE_DAYS: int = 7 * 3600 * 24
+    JWT_ACCESS_EXPIRE_MINUTES: int = 30
+    JWT_REFRESH_EXPIRE_DAYS: int = 30
 
     # Extensions
     ALLOWED_AUDIO_EXTENSIONS: set[str] = {'.wav', '.mp3', '.m4a', '.flac', '.aac', '.ogg', '.wma', '.aiff'}
