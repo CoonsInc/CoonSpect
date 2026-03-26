@@ -97,13 +97,5 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
         yield ac
 
 @pytest.fixture
-def mock_settings() -> Generator[MagicMock, None, None]:
-    with patch("src.services.token.settings") as mock:
-        mock.JWT_SECRET_KEY = "test-secret"
-        mock.JWT_ALGORITHM = "HS256"
-        mock.JWT_ACCESS_EXPIRE_MINUTES = 15
-        yield mock
-
-@pytest.fixture
 def ws_manager() -> WebSocketManager:
     return WebSocketManager()
