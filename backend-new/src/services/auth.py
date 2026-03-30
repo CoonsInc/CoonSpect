@@ -108,3 +108,53 @@ async def authorize(
     auth_service: AuthService = Depends(get_auth_service)
 ) -> User:
     return await auth_service.authorize(request.cookies.get("access_token"))
+
+
+
+# TODO: Разобраться с этим говном
+
+from http.cookies import SimpleCookie
+from fastapi import WebSocket, status, Depends
+# Твои внутренние импорты (поправь пути, если они другие)
+from src.services.auth import decode_token, TokenType 
+from src.infra.redis import get_redis # Твой инстанс редиса
+
+#
+async def authorize_websocket(websocket: WebSocket) -> str:
+    """Проверяет куки, токен и наличие задачи в Redis для WebSocket."""
+    
+    cookie_header = websocket.headers.get("cookie")
+    if not cookie_header:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="No cookies")
+        raise Exception("WebSocket Auth Failed: No cookies")
+    
+    cookies = SimpleCookie(cookie_header)
+    access_token_value = cookies.get("access_token")
+    
+    if not access_token_value:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="No access token")
+        raise Exception("WebSocket Auth Failed: No access token")
+        
+    try:
+        # 1. Декодируем токен
+        token_data = decode_token(access_token_value.value, TokenType.ACCESS)
+        
+        # 2. Проверка блэклиста в Redis
+        if await redis_async.get(f"blacklist:{access_token_value.value}"):
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Token revoked")
+            raise Exception("WebSocket Auth Failed: Token revoked")
+            
+        task_id = str(token_data.uuid)
+        
+        # 3. Проверяем существование задачи
+        if not await redis_async.exists(f"task:{task_id}"):
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Task not found")
+            raise Exception("WebSocket Auth Failed: Task not found")
+            
+        return task_id
+        
+    except Exception as e:
+        # Если при декодировании токена упала ошибка
+        if not websocket.client_state.name == "DISCONNECTED":
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid token")
+        raise e

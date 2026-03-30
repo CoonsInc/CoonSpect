@@ -13,7 +13,7 @@ from src.infra.redis import _redis
 # from src.infra.s3 import session, setup_s3
 from src.services.websocket import _manager
 from src.api.schemas.status import Status
-from src.infra.tasks.broker import broker
+from src.infra.taskiq import broker
 from src.infra.http_client import _http_client
 
 logger.remove()

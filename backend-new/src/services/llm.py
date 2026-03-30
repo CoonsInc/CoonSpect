@@ -1,4 +1,4 @@
-from taskiq_dependencies import Depends
+from fastapi import Depends
 from httpx import AsyncClient
 from src.infra.http_client import get_http_client
 from src.settings import settings
