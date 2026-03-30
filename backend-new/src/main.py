@@ -9,10 +9,12 @@ from src.api.routers.auth import router as auth_router
 #from src.api.routers.tasks import router as tasks_router
 from src.api.routers.user import router as user_router
 from src.api.routers.lecture import router as lecture_router
-from src.infra.redis import redis
+from src.infra.redis import _redis
 # from src.infra.s3 import session, setup_s3
-from src.services.websocket import get_ws_manager
+from src.services.websocket import _manager
 from src.api.schemas.status import Status
+from src.infra.tasks.broker import broker
+from src.infra.http_client import _http_client
 
 logger.remove()
 logger.add(
@@ -25,22 +27,19 @@ logger.add(
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # await setup_s3()
-    #listener_task = asyncio.create_task(ws_event_listener())
+    await broker.startup()
     
     yield
 
-    await get_ws_manager().cleanup_all()
-    await redis.close()
-    # listener_task.cancel()
-    # try:
-    #     await listener_task
-    # except asyncio.CancelledError:
-    #     pass
+    await broker.shutdown()
+    await _manager.cleanup_all()
+    await _http_client.aclose()
+    await _redis.close()
 
 app = FastAPI()
 
 app.include_router(auth_router)
-#app.include_router(tasks_router)
+#app.include_router(task_router)
 app.include_router(user_router)
 app.include_router(lecture_router)
 
