@@ -4,17 +4,17 @@ from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 import sys
 from loguru import logger
+import asyncio
 
 from src.api.routers.auth import router as auth_router
-#from src.api.routers.tasks import router as tasks_router
+from src.api.routers.task import router as task_router
 from src.api.routers.user import router as user_router
 from src.api.routers.lecture import router as lecture_router
-from src.infra.redis import _redis
-# from src.infra.s3 import session, setup_s3
-from src.services.websocket import _manager
+from src.infra.redis import get_redis
+from src.infra.s3 import setup_s3
+from src.services.websocket import get_ws_manager
 from src.api.schemas.status import Status
 from src.infra.taskiq import broker
-from src.infra.http_client import _http_client
 
 logger.remove()
 logger.add(
@@ -26,20 +26,21 @@ logger.add(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # await setup_s3()
+    await setup_s3()
     await broker.startup()
+    redis = await get_redis()
+    ws_manager = get_ws_manager()
+    redis_updates_reader_task = asyncio.create_task(ws_manager.redis_updates_reader(redis))
     
     yield
 
     await broker.shutdown()
-    await _manager.cleanup_all()
-    await _http_client.aclose()
-    await _redis.close()
+    await ws_manager.cleanup_all()
 
 app = FastAPI()
 
 app.include_router(auth_router)
-#app.include_router(task_router)
+app.include_router(task_router)
 app.include_router(user_router)
 app.include_router(lecture_router)
 

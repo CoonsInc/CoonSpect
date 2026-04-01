@@ -4,7 +4,7 @@ from uuid import UUID
 from src.api.schemas.lecture import LectureRead, LectureUpdate, LecturesPage
 from src.services.lecture import LectureService, get_lecture_service
 from src.infra.sql.models.user import User
-from src.services.auth import authorize
+from src.services.auth import authenticate
 from src.api.schemas.status import Status
 
 router = APIRouter(prefix="/lecture", tags=["lecture"])
@@ -33,7 +33,7 @@ async def get(
 async def edit(
     lecture_id: UUID,
     update_data: LectureUpdate,
-    user: User = Depends(authorize),
+    user: User = Depends(authenticate),
     service: LectureService = Depends(get_lecture_service)
 ):
     return await service.update_lecture(lecture_id, update_data, user)
@@ -41,7 +41,7 @@ async def edit(
 @router.delete("/delete/{lecture_id}")
 async def delete(
     lecture_id: UUID,
-    user: User = Depends(authorize),
+    user: User = Depends(authenticate),
     service: LectureService = Depends(get_lecture_service)
 ):
     await service.delete_lecture(lecture_id, user)

@@ -84,7 +84,7 @@ async def test_authorize_success(
     
     auth_service.token_service.decode_and_validate.return_value = mock_token_data # type: ignore
     
-    authorized_user: User = await auth_service.authorize("some_token")
+    authorized_user: User = await auth_service.authenticate("some_token")
     
     assert authorized_user.id == user_id
     assert authorized_user.username == "auth_me"

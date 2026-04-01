@@ -1,6 +1,9 @@
 from fastapi import WebSocket, WebSocketDisconnect
 from loguru import logger
 import asyncio
+from redis.asyncio import Redis
+import json
+from typing import Any
 
 class WebSocketManager:
     """Менеджер WebSocket-соединений."""
@@ -64,7 +67,22 @@ class WebSocketManager:
         await asyncio.gather(*tasks)
         logger.info("All WebSocket connections cleaned up")
 
-_manager = WebSocketManager()
+    async def redis_updates_reader(self, redis: Redis):
+        """Фоновый слушатель Redis Pub/Sub"""
+        pubsub = redis.pubsub()
+        await pubsub.subscribe("task_updates")
+        
+        try:
+            async for message in pubsub.listen():
+                if message["type"] == "message":
+                    data: dict[str, Any] = json.loads(message["data"])
+                    task_id: str = data.pop("task_id")
+                    await self.send_message(task_id, json.dumps(data["data"]))
+        finally:
+            logger.error("redis_updates_reader is down")
+            await pubsub.unsubscribe("task_updates")
+
+_wsmanager = WebSocketManager()
 
 def get_ws_manager() -> WebSocketManager:
-    return _manager
+    return _wsmanager

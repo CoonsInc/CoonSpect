@@ -24,7 +24,6 @@ class Lecture(Base):
     
     lecturer: Mapped[str] = mapped_column(String(127), server_default="Неизвестно")
     name: Mapped[str] = mapped_column(String(127))
-    # Используем str | None вместо Optional[str] (PEP 604)
     audio_url: Mapped[str | None] = mapped_column(String, nullable=True)
     text: Mapped[str] = mapped_column(Text)
     

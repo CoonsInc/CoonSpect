@@ -8,35 +8,35 @@ class Settings(BaseSettings):
     JWT_REFRESH_EXPIRE_DAYS: int = 30
 
     # Extensions
-    ALLOWED_AUDIO_EXTENSIONS: set[str] = {'.wav', '.mp3', '.m4a', '.flac', '.aac', '.ogg', '.wma', '.aiff'}
-    ALLOWED_VIDEO_EXTENSIONS: set[str] = {'.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv', '.webm', '.mpeg', '.mpg'}
+    ALLOWED_AUDIO_EXTENSIONS: set[str] = {".wav", ".mp3", ".m4a", ".flac", ".aac", ".ogg", ".wma", ".aiff"}
+    ALLOWED_VIDEO_EXTENSIONS: set[str] = {".mp4", ".avi", ".mov", ".mkv", ".wmv", ".flv", ".webm", ".mpeg", ".mpg"}
 
     # Mode
-    BACKEND_MODE: str = 'prod'  # 'test' or 'prod'
+    BACKEND_MODE: str = "prod"  # "test" or "prod"
 
     # S3
-    S3_HOST: str = 'localhost'
+    S3_HOST: str = "localhost"
     S3_PORT: int = 9000
-    S3_ACCESS_KEY: str = 'admin'
-    S3_SECRET_KEY: str = 'password'
-    S3_RAW_LECTURES_BUCKET: str = 'lectures'
+    S3_ACCESS_KEY: str = "admin"
+    S3_SECRET_KEY: str = "password"
+    S3_RAW_LECTURES_BUCKET: str = "lectures"
 
     # Redis
-    REDIS_HOST: str = 'localhost'
+    REDIS_HOST: str = "localhost"
     REDIS_PORT: int = 6379
 
     # Postgres
-    POSTGRES_HOST: str = 'localhost'
-    POSTGRES_PORT: str = '5433'
-    POSTGRES_USER: str = 'user'
-    POSTGRES_PASSWORD: str = 'pwd1234'
-    POSTGRES_DB: str = 'coonspect'
+    POSTGRES_HOST: str = "localhost"
+    POSTGRES_PORT: int = 5433
+    POSTGRES_USER: str = "user"
+    POSTGRES_PASSWORD: str = "pwd1234"
+    POSTGRES_DB: str = "coonspect"
 
     # Services
-    STT_SERVICE_HOST: str = "stt-service"
-    STT_SERVICE_PORT: str = "8000"
-    LLM_SERVICE_HOST : str = "llm-service"
-    LLM_SERVICE_PORT : str = "8000"
+    STT_SERVICE_HOST: str = "localhost"
+    STT_SERVICE_PORT: int = 8001
+    LLM_SERVICE_HOST : str = "localhost"
+    LLM_SERVICE_PORT : int = 8003
 
     # Pydantic config
     model_config = SettingsConfigDict(

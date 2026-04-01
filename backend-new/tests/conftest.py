@@ -15,7 +15,7 @@ from src.infra.sql.base import Base
 from src.services.websocket import WebSocketManager
 from src.main import app as fastapi_app
 
-from src.services.auth import authorize
+from src.services.auth import authenticate
 from src.infra.sql.models.user import User
 from src.services.password import PasswordService
 
@@ -41,7 +41,7 @@ def authorize_override():
         client.get(...)
     """
     def _override(user: User | None):
-        fastapi_app.dependency_overrides[authorize] = lambda: user
+        fastapi_app.dependency_overrides[authenticate] = lambda: user
     
     yield _override
     # Очистка произойдет в setup_dependencies
