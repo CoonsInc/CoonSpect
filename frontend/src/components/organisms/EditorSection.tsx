@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useTextStore } from "../../stores";
 import EditorToolbar from "../molecules/EditorToolbar";
+import AudioSearchPanel from "./AudioSearchPanel";
 import Heading from "../atoms/Heading";
 import Button from "../atoms/Button";
 import Icon from "../atoms/Icon";
@@ -24,6 +25,11 @@ const EditorSection: React.FC<EditorSectionProps> = ({
   const [text, setText] = useState(processedText || initialText);
   const [localTitle, setLocalTitle] = useState(storeTitle);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  const currentAudioId = audioFile?.name || null;
 
   useEffect(() => {
     setText(processedText || initialText);
@@ -51,7 +57,6 @@ const EditorSection: React.FC<EditorSectionProps> = ({
     onSave(text, localTitle);
   };
 
-  // Скачивание на ПК
   const handleDownloadLocally = () => {
     if (!localTitle.trim()) {
       alert("Пожалуйста, введите название лекции перед скачиванием.");
@@ -71,7 +76,7 @@ const EditorSection: React.FC<EditorSectionProps> = ({
     URL.revokeObjectURL(url);
   };
 
-  const handleFormat = (type: 'bold' | 'italic' | 'list' | 'heading' | 'quote' | 'link') => {
+  const handleFormat = (type: 'bold' | 'italic' | 'list' | 'heading' | 'quote' | 'link' | 'divider') => {
     if (!textareaRef.current) return;
     const textarea = textareaRef.current;
     const start = textarea.selectionStart;
@@ -84,6 +89,13 @@ const EditorSection: React.FC<EditorSectionProps> = ({
       textarea.focus();
       textarea.setSelectionRange(newCursorPos, newCursorPos);
     }, 0);
+  };
+
+  const handleJumpToTime = (time: number) => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = time;
+      audioRef.current.play(); 
+    }
   };
 
   const renderPreview = () => {
@@ -100,24 +112,42 @@ const EditorSection: React.FC<EditorSectionProps> = ({
     return <div className="h-full" dangerouslySetInnerHTML={{ __html: htmlContent }} />;
   };
 
-  return (
-    <section className="min-h-screen py-20 px-6 bg-[var(--color-bg-primary)]">
+return (
+    <section className="min-h-screen py-20 px-6 bg-[var(--color-bg-primary)] relative overflow-hidden">
       <div className="w-full max-w-5xl mx-auto">
-        <div className="mb-6 text-center">
-          <Heading level={1} className="font-bold text-[var(--color-text-purple)] text-2xl sm:text-3xl">
-            Отредактируй и скачай конспект
+        
+        {/* Хедер с кнопкой поиска */}
+        <div className="mb-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex w-full sm:w-auto justify-start sm:flex-1 order-2 sm:order-1">
+            {onBack && (
+              <Button onClick={onBack} variant="secondary" className="flex items-center gap-2">
+                <Icon name="ArrowLeft" className="w-4 h-4" />
+                <span className="hidden xs:inline">Назад</span>
+              </Button>
+            )}
+          </div>
+
+          <Heading 
+            level={1} 
+            className="font-bold text-[var(--color-text-purple)] text-xl sm:text-2xl md:text-3xl text-center flex-1 order-1 sm:order-2 w-full whitespace-normal"
+          >
+            Редактор конспекта
           </Heading>
-        </div>
 
-        <div className="mb-8 flex items-center justify-between">
-          {onBack && (
-            <Button onClick={onBack} variant="secondary" className="flex items-center gap-2">
-              <Icon name="ArrowLeft" className="w-4 h-4" />
-              Назад
+          <div className="flex w-full sm:w-auto justify-end sm:flex-1 order-3">
+            <Button 
+              onClick={() => setIsSearchOpen(true)} 
+              variant="secondary"
+              disabled={!audioUrl}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 border-[var(--color-text-purple)] text-[var(--color-text-purple)] hover:bg-[var(--color-text-purple)] hover:text-white disabled:opacity-50 transition-all"
+            >
+              <Icon name="Search" className="w-4 h-4" />
+              Поиск по аудио
             </Button>
-          )}
+          </div>
         </div>
 
+        {/* Поле названия */}
         <div className="mb-6 flex flex-col gap-2">
           <label className="text-sm font-medium text-[var(--color-text-secondary)] ml-1">
             Название лекции
@@ -133,6 +163,7 @@ const EditorSection: React.FC<EditorSectionProps> = ({
           </div>
         </div>
 
+        {/* Тулбар */}
         <div className="mb-8">
           <EditorToolbar 
             onFormat={handleFormat}
@@ -142,6 +173,7 @@ const EditorSection: React.FC<EditorSectionProps> = ({
           />
         </div>
 
+        {/* Зона редактора и предпросмотра */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="flex flex-col">
             <div className="h-[450px] bg-[var(--color-bg-accent)] rounded-lg border border-[var(--color-border)] overflow-hidden relative">
@@ -154,7 +186,7 @@ const EditorSection: React.FC<EditorSectionProps> = ({
                 placeholder="Введите текст здесь..."
               />
               {isSaving && (
-                 <div className="absolute inset-0 bg-black/10 flex items-center justify-center">
+                 <div className="absolute inset-0 bg-black/10 flex items-center justify-center z-10">
                     <span className="text-sm font-medium">Сохранение...</span>
                  </div>
               )}
@@ -168,17 +200,26 @@ const EditorSection: React.FC<EditorSectionProps> = ({
           </div>    
         </div>    
 
+        {/* Аудиоплеер */}
         {audioUrl && (
-          <div className="mt-8 max-w-md mx-auto">
-            <Heading level={3} className="text-[var(--color-text-purple)] mb-3 text-base">
-              {audioFile?.name ? `🎵 ${audioFile.name}` : 'Аудиофайл'}
+          <div className="mt-8 max-w-xl mx-auto p-5 bg-[var(--color-bg-accent)] rounded-xl border border-[var(--color-border)] shadow-sm">
+            <Heading level={3} className="text-[var(--color-text-purple)] mb-3 text-base flex items-center gap-2">
+               🎵 {audioFile?.name || 'Аудиофайл'}
             </Heading>
-            <audio controls src={audioUrl} className="w-full rounded-lg">
+            {/* Добавлен ref для управления извне */}
+            <audio ref={audioRef} controls src={audioUrl} className="w-full rounded-lg">
               Ваш браузер не поддерживает воспроизведение аудио.
             </audio>
           </div>
         )}
       </div>
+
+      <AudioSearchPanel
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+        audioId={currentAudioId}
+        onTimeClick={handleJumpToTime}
+      />
     </section>
   );
 };

@@ -22,14 +22,15 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({ onFormat, onSave, onCopy,
   ] as const;
 
   const actionButtons = [
-    { icon: "Download", action: onDownload, show: onDownload, title: "Скачать на ПК" }, // <-- Новая кнопка
+    { icon: "Download", action: onDownload, show: onDownload, title: "Скачать на ПК" },
     { icon: "Copy", action: onCopy, show: onCopy, title: "Скопировать текст" },
     { icon: "Save", action: onSave, show: onSave, title: "Сохранить на сервер" },
   ] as const;
 
   return (
-    <div className="flex items-center justify-between gap-4 mb-6 p-4 bg-[var(--color-bg-secondary)] rounded-lg">
-      <div className="flex items-center gap-1">
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6 p-3 sm:p-4 bg-[var(--color-bg-secondary)] rounded-lg">
+      
+      <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1 w-full sm:w-auto">
         {formatButtons.map(({ icon, action, title }) => (
           <Button
             key={action}
@@ -43,7 +44,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({ onFormat, onSave, onCopy,
         ))}
       </div>
 
-      <div className="flex items-center gap-1">
+      <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2 w-full sm:w-auto pt-3 sm:pt-0 border-t sm:border-none border-[var(--color-border)]">
         {actionButtons.map(
           ({ icon, action, show, title }) =>
             show && (
