@@ -5,6 +5,7 @@ import LoginPage from '../pages/LoginPage';
 import MainPage from '../pages/MainPage';
 import LecturesPage from '../pages/LecturesPage';
 import ProfilePage from '../pages/ProfilePage';
+import ViewLecturePage from '../pages/ViewLecturePage';
 
 import ProtectedRoute from './ProtectedRoute';
 import Spinner from '../components/atoms/Spinner';
@@ -18,7 +19,6 @@ const AppRoutes = () => {
   //   setCurrentRoute(location.pathname);
   // }, [location.pathname, setCurrentRoute]);
 
-  // Заменяем хардкод на твой аккуратный Spinner
   if (isInitializing) {
     return (
       <div className="bg-[var(--color-bg-primary)] min-h-screen flex flex-col items-center justify-center">
@@ -37,10 +37,11 @@ const AppRoutes = () => {
       <Route path="/" element={<Navigate to="/upload" replace />} />
       <Route path="/upload" element={<MainPage />} />
 
-      {/* ЗАЩИЩЕННЫЕ РОУТЫ (Группируем их внутри ProtectedRoute) */}
+      {/* ЗАЩИЩЕННЫЕ РОУТЫ */}
       <Route element={<ProtectedRoute />}>
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/lectures" element={<LecturesPage />} />
+        <Route path="/view-lecture" element={<ViewLecturePage />} />
       </Route>
       
       {/* FALLBACK (если путь не найден) */}
