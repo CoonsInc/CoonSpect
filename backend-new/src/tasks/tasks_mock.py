@@ -10,6 +10,7 @@ from src.infra.sql.models.lecture import Lecture
 from typing import Any
 from uuid import UUID
 from loguru import logger
+from asyncio import sleep
 
 async def update_status(
     redis: Redis,
@@ -34,7 +35,8 @@ async def stt_step(
     stt_service: STTService = TaskiqDepends(get_stt_service)
 ) -> dict[Any, Any]:
     await update_status(redis, task_id, "stt", filename)
-    return await stt_service.transcribe(bucket, filename)
+    await sleep(5)
+    return {"text": "hello world"}
 
 @broker.task
 async def llm_step(
@@ -44,8 +46,8 @@ async def llm_step(
     llm_service: LLMService = TaskiqDepends(get_llm_service)
 ) -> str:
     await update_status(redis, task_id, "llm", text)
-    result = await llm_service.summarize(text)
-    return result["summary"]
+    await sleep(5)
+    return f"summarized {text}"
 
 @broker.task
 async def save_step(

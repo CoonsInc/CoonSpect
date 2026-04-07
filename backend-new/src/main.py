@@ -20,8 +20,7 @@ logger.remove()
 logger.add(
     sys.stdout,
     format="({time:HH:mm:ss}) [{name} / {function} {level}] {message}",
-    level="INFO",
-    enqueue=True
+    level="DEBUG"
 )
 
 @asynccontextmanager

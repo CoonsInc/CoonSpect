@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     ALLOWED_VIDEO_EXTENSIONS: set[str] = {".mp4", ".avi", ".mov", ".mkv", ".wmv", ".flv", ".webm", ".mpeg", ".mpg"}
 
     # Mode
-    BACKEND_MODE: str = "prod"  # "test" or "prod"
+    BACKEND_MODE: str = "test"  # "test" or "prod"
 
     # S3
     S3_HOST: str = "localhost"

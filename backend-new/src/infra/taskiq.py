@@ -1,10 +1,18 @@
-import taskiq_redis
-from taskiq import InMemoryBroker
 import taskiq_fastapi
+from taskiq_redis import RedisAsyncResultBackend, ListQueueBroker
 
 from src.settings import settings
 
-# Для разработки можно InMemory, для продакшена - Redis
-broker = taskiq_redis.ListQueueBroker(settings.REDIS_URL)
+# 1. Настраиваем хранилище результатов (Result Backend)
+# Именно сюда воркеры будут записывать ответы, чтобы ты мог их забрать через get_result()
+result_backend = RedisAsyncResultBackend(
+    redis_url=str(settings.REDIS_URL),
+)
 
+# 2. Создаем брокер и привязываем к нему Backend
+broker = ListQueueBroker(
+    str(settings.REDIS_URL),
+).with_result_backend(result_backend)
+
+# 3. Инициализация для FastAPI
 taskiq_fastapi.init(broker, "src.main:app")
