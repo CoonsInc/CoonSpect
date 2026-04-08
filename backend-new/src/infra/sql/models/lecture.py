@@ -22,16 +22,16 @@ class Lecture(Base):
         UUID(as_uuid=True), ForeignKey("users.id")
     )
     
-    lecturer: Mapped[str] = mapped_column(String(127), server_default="Неизвестно")
+    lecturer: Mapped[str] = mapped_column(String(127), default="Неизвестно")
     name: Mapped[str] = mapped_column(String(127))
     audio_url: Mapped[str | None] = mapped_column(String, nullable=True)
     text: Mapped[str] = mapped_column(Text)
     
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
+        DateTime(timezone=True), default=func.now()
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+        DateTime(timezone=True), default=func.now(), onupdate=func.now()
     )
     
     user: Mapped[User] = relationship("User", back_populates="lectures")

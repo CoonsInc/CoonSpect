@@ -74,6 +74,7 @@ class WebSocketManager:
         
         try:
             async for message in pubsub.listen():
+                logger.info(f"RECIEVED MSG FROM REDIS SUBPUB: {message}")
                 if message["type"] == "message":
                     data: dict[str, Any] = json.loads(message["data"])
                     task_id: str = data.pop("task_id")

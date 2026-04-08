@@ -17,13 +17,14 @@ async def update_status(
     status: str,
     data: str | None = None,
 ):
-    await redis.set(task_id, status)
     payload = {
         "task_id": task_id,
         "status": status,
         "data": data
     }
-    await redis.publish("task_updates", json.dumps(payload))
+    status = json.dumps(payload)
+    await redis.set(task_id, status)
+    await redis.publish("task_updates", status)
 
 @broker.task
 async def stt_step(
@@ -77,9 +78,9 @@ async def run_audio_pipeline(
 ):
     filepath = f"{bucket}/{filename}"
     try:
-        stt_result = (await (await stt_step.kiq(task_id, bucket, filename)).get_result()).return_value
+        stt_result = (await (await stt_step.kiq(task_id, bucket, filename)).wait_result()).return_value
         
-        summary = (await (await llm_step.kiq(task_id, stt_result["text"])).get_result()).return_value
+        summary = (await (await llm_step.kiq(task_id, stt_result["text"])).wait_result()).return_value
         
         lecture = (await (await save_step.kiq(
             task_id,
@@ -87,7 +88,7 @@ async def run_audio_pipeline(
             filename,
             filepath,
             summary
-        )).get_result()).return_value
+        )).wait_result()).return_value
 
         await update_status(redis, task_id, "finish", str(lecture.id))
         
