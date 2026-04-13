@@ -12,6 +12,10 @@ class S3Service:
         self.s3_client = s3_client
         self.min_part_size = 5 * 1024 * 1024  # 5 MB
 
+    async def wait_object(self, bucket: str, key: str):
+        waiter = self.s3_client.get_waiter("object_exists")
+        await waiter.wait(Bucket=bucket, Key=key)
+
     async def upload_stream_multipart(
         self,
         data_stream: AsyncGenerator[bytes, None],
@@ -19,8 +23,7 @@ class S3Service:
         key: str
     ) -> None:
         """Безопасно загружает данные из генератора в S3 через Multipart."""
-        
-        # 1. Инициализация
+                # 1. Инициализация
         mp = await self.s3_client.create_multipart_upload(Bucket=bucket, Key=key)
         upload_id = mp["UploadId"]
         

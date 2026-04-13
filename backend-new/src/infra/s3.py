@@ -10,7 +10,7 @@ _session = aioboto3.Session(
 )
 
 async def get_s3_client() -> AsyncGenerator[S3Client, None]:
-    async with _session.client('s3', endpoint_url=settings.S3_URL) as s3_client: # type: ignore
+    async with _session.client('s3', endpoint_url=settings.S3_URL, region_name="auto") as s3_client: # type: ignore
         yield s3_client
 
 async def setup_s3():

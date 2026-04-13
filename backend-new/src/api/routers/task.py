@@ -18,9 +18,9 @@ async def start(
         while chunk := await file.read(chunk_size):
             yield chunk
 
-    task_id = await service.start(user, file.filename, file_chunks())
+    user_task_id = await service.start(user, file.filename, file_chunks())
     
-    return Status.success(task_id)
+    return Status.success(user_task_id)
 
 
 @router.websocket("/ws")
@@ -30,21 +30,21 @@ async def websocket_endpoint(
     ws_manager: WebSocketManager = Depends(get_ws_manager),
     service: TaskService = Depends(get_task_service)
 ):
-    task_id = service.get_task_id(user)
+    user_task_id = service.get_user_task_id(user)
     
-    task_status = await service.get_task_status(task_id)
+    task_status = await service.get_task_status(user_task_id)
     if not task_status:
         await websocket.close()
         return
         
-    await ws_manager.connect(websocket, task_id)
-    await ws_manager.send_message(task_id, task_status)
+    await ws_manager.connect(websocket, user_task_id)
+    await ws_manager.send_message(user_task_id, task_status)
 
     try:
         while True:
             await websocket.receive_text()
     except WebSocketDisconnect:
-        await ws_manager.disconnect(task_id)
+        await ws_manager.disconnect(user_task_id)
     except Exception:
-        await ws_manager.disconnect(task_id)
+        await ws_manager.disconnect(user_task_id)
         await websocket.close()
