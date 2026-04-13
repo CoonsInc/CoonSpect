@@ -1,8 +1,9 @@
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import Heading from "../atoms/Heading";
 import Button from "../atoms/Button";
 import Icon from "../atoms/Icon";
 import Text from "../atoms/Text";
+import AudioSearchPanel from "./AudioSearchPanel";
 import { parseMarkdownToHtml, copyToClipboard } from "../../utils/mdUtils";
 
 interface ViewLectureSectionProps {
@@ -19,6 +20,9 @@ const ViewLectureSection: React.FC<ViewLectureSectionProps> = ({
   onBack
 }) => {
   const contentRef = useRef<HTMLDivElement>(null);
+
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   const handleCopy = () => {
     copyToClipboard(text, null);
@@ -37,14 +41,22 @@ const ViewLectureSection: React.FC<ViewLectureSectionProps> = ({
     URL.revokeObjectURL(url);
   };
 
+  const handleJumpToTime = (time: number) => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = time;
+      audioRef.current.play(); 
+    }
+  };
+
   return (
-    <section className="py-20 px-6 mt-16 bg-[var(--color-bg-primary)] min-h-screen">
+    <section className="py-20 px-6 mt-16 bg-[var(--color-bg-primary)] min-h-screen relative overflow-hidden">
       <div className="w-full max-w-4xl mx-auto">
         
+        {/* Верхняя панель (Назад + Скопировать/Скачать) */}
         <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <Button onClick={onBack} variant="secondary" className="flex items-center gap-2 self-start">
             <Icon name="ArrowLeft" className="w-4 h-4" />
-            Назад
+            <span className="hidden xs:inline">Назад</span>
           </Button>
 
           <div className="flex items-center gap-3">
@@ -59,7 +71,8 @@ const ViewLectureSection: React.FC<ViewLectureSectionProps> = ({
           </div>
         </div>
 
-        <div className="mb-6 text-center sm:text-left">
+        {/* Заголовок */}
+        <div className="mb-2 text-center sm:text-left">
             <Text size="sm" className="uppercase tracking-wider mb-2 opacity-80">
             Конспект лекции
             </Text>
@@ -68,6 +81,20 @@ const ViewLectureSection: React.FC<ViewLectureSectionProps> = ({
             </Heading>
         </div>
 
+        {/* Кнопка поиска по аудио */}
+        <div className="mb-4 flex justify-end">
+          <Button 
+            onClick={() => setIsSearchOpen(true)} 
+            variant="secondary"
+            disabled={!audioUrl}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 border-[var(--color-text-purple)] text-[var(--color-text-purple)] hover:bg-[var(--color-text-purple)] hover:text-white disabled:opacity-50 transition-all"
+          >
+            <Icon name="Search" className="w-4 h-4" />
+            Поиск по аудио
+          </Button>
+        </div>
+
+        {/* Текст конспекта */}
         <div className="bg-[var(--color-bg-accent)] rounded-lg border border-[var(--color-border)] p-6 sm:p-10 min-h-[500px] shadow-sm overflow-x-auto">
           <div 
             ref={contentRef}
@@ -76,18 +103,27 @@ const ViewLectureSection: React.FC<ViewLectureSectionProps> = ({
           />
         </div>
 
+        {/* Плеер */}
         {audioUrl && (
           <div className="mt-8 max-w-md mx-auto sm:mx-0">
             <Heading level={3} className="text-[var(--color-text-purple)] mb-3 text-base">
               🎵 Запись лекции
             </Heading>
-            <audio controls src={audioUrl} className="w-full rounded-lg outline-none">
+            <audio ref={audioRef} controls src={audioUrl} className="w-full rounded-lg outline-none">
               Ваш браузер не поддерживает воспроизведение аудио.
             </audio>
           </div>
         )}
 
       </div>
+
+      {/* Выезжающая панель поиска */}
+      <AudioSearchPanel
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+        audioId={title}
+        onTimeClick={handleJumpToTime}
+      />
     </section>
   );
 };
