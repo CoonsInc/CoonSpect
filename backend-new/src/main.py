@@ -33,10 +33,15 @@ async def lifespan(app: FastAPI):
     
     yield
 
+    redis_updates_reader_task.cancel()
+    try:
+        await redis_updates_reader_task
+    except asyncio.CancelledError:
+        logger.info("redis_updates_reader task cancelled gracefully")
     await broker.shutdown()
     await ws_manager.cleanup_all()
 
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
 
 app.include_router(auth_router)
 app.include_router(task_router)

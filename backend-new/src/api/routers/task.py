@@ -33,7 +33,7 @@ async def websocket_endpoint(
     task_id = service.get_task_id(user)
     
     task_status = await service.get_task_status(task_id)
-    if not task_status: # Если нет статуса то задачи тоже нет
+    if not task_status:
         await websocket.close()
         return
         

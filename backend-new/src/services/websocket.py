@@ -71,14 +71,16 @@ class WebSocketManager:
         """Фоновый слушатель Redis Pub/Sub"""
         pubsub = redis.pubsub()
         await pubsub.subscribe("task_updates")
-        
         try:
             async for message in pubsub.listen():
-                logger.info(f"RECIEVED MSG FROM REDIS SUBPUB: {message}")
+                logger.info(f"RECEIVED MSG FROM REDIS SUBPUB: {message}")
                 if message["type"] == "message":
                     data: dict[str, Any] = json.loads(message["data"])
                     task_id: str = data.pop("task_id")
-                    await self.send_message(task_id, json.dumps(data["data"]))
+                    await self.send_message(task_id, json.dumps(data))
+        except asyncio.CancelledError:
+            logger.info("redis_updates_reader shutting down...")
+            raise
         finally:
             logger.error("redis_updates_reader is down")
             await pubsub.unsubscribe("task_updates")

@@ -18,13 +18,12 @@ async def update_status(
     data: str | None = None,
 ):
     payload = {
-        "task_id": task_id,
         "status": status,
         "data": data
     }
-    status = json.dumps(payload)
-    await redis.set(task_id, status)
-    await redis.publish("task_updates", status)
+    await redis.set(task_id, json.dumps(payload))
+    payload["task_id"] = task_id
+    await redis.publish("task_updates", json.dumps(payload))
 
 @broker.task
 async def stt_step(

@@ -1,4 +1,3 @@
-import json
 from redis.asyncio import Redis
 from taskiq import TaskiqDepends
 from src.infra.taskiq import broker
@@ -12,6 +11,7 @@ from uuid import UUID
 from loguru import logger
 from asyncio import sleep
 from src.tasks.tasks import update_status
+from taskiq.depends.progress_tracker import ProgressTracker, TaskProgress
 
 @broker.task
 async def stt_step(
@@ -62,17 +62,18 @@ async def run_audio_pipeline(
     user_id: UUID,
     bucket: str,
     filename: str,
-    redis: Redis = TaskiqDepends(get_redis)
+    redis: Redis = TaskiqDepends(get_redis),
+    tracker: ProgressTracker = TaskiqDepends()
 ):
     filepath = f"{bucket}/{filename}"
     try:
-        print("some stt")
+        logger.info("some stt")
         stt_result = (await (await stt_step.kiq(task_id, bucket, filename)).wait_result()).return_value
         
-        print("some llm")
+        logger.info("some llm")
         summary = (await (await llm_step.kiq(task_id, stt_result["text"])).wait_result()).return_value
         
-        print("some db")
+        logger.info("some db")
         lecture_id = (await (await save_step.kiq(
             task_id,
             user_id,

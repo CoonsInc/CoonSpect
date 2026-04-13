@@ -21,12 +21,12 @@ class TaskService:
         self.redis = redis
 
     async def start(self, user: User, original_filename: str | None, file_content: AsyncGenerator[bytes, None]) -> str:
-        # TODO: изменить task_id на 
         task_id = self.get_task_id(user)
         if await self.redis.get(task_id):
             raise HTTPException(400, "User already have task in progress")
         await tasks.update_status(self.redis, task_id, "uploading", original_filename)
         await self.run_audio_pipeline(task_id, user.id, original_filename, file_content)
+
         return task_id
 
     async def run_audio_pipeline(
