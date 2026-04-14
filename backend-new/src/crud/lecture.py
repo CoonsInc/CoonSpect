@@ -33,12 +33,13 @@ class LectureCRUD(BaseCRUD[Lecture]):
         pages = math.ceil(total / limit) if total > 0 else 1
         if page > pages or page < 1:
             return [], total, pages
-
-        # сортировка с фиксом для name
+        
         sort_func = desc if order == "desc" else asc
         if sort_by == "name":
-            # принудительная байтовая сортировка (как в Python)
-            column = collate(Lecture.name, "C")
+            if self.db.bind.dialect.name == "postgresql":
+                column = collate(Lecture.name, "C")
+            else:
+                column = Lecture.name
         else:
             column = getattr(Lecture, sort_by, Lecture.created_at)
 
