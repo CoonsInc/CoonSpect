@@ -14,22 +14,18 @@ from src.services.s3 import S3Service, get_s3_service
 from src.tasks.status import TaskStatus
 
 async def update_status(
-    tracker: ProgressTracker,
     redis: Redis,
     task_id: str,
     status: TaskStatus,
-    data: str | None = None,
-    taskiq_state: TaskState = TaskState.STARTED
+    data: str | None = None
 ):
     payload = {
         "status": status,
         "data": data
     }
 
-    await tracker.set_progress(taskiq_state, payload)
-    
-    payload["task_id"] = task_id
-    await redis.publish("task_updates", json.dumps(payload))
+    await redis.setex(task_id, 43200, json.dumps(payload))
+    await redis.publish("task_updates", task_id)
 
 @broker.task
 async def stt_step(
@@ -70,22 +66,21 @@ async def run_audio_pipeline(
     user_id: UUID,
     bucket: str,
     filename: str,
-    s3_service: S3Service = TaskiqDepends(get_s3_service),
     redis: Redis = TaskiqDepends(get_redis),
-    tracker: ProgressTracker = TaskiqDepends()
+    s3_service: S3Service = TaskiqDepends(get_s3_service)
 ):
     filepath = f"{bucket}/{filename}"
     try:
-        await update_status(tracker, redis, task_id, TaskStatus.UPLOADING, filename)
+        await update_status(redis, task_id, TaskStatus.UPLOADING, filename)
         await s3_service.wait_object(bucket, filename)
 
-        await update_status(tracker, redis, task_id, TaskStatus.STT, filename)
+        await update_status(redis, task_id, TaskStatus.STT, filename)
         stt_result = (await (await stt_step.kiq(bucket, filename)).wait_result()).return_value
         
-        await update_status(tracker, redis, task_id, TaskStatus.LLM, stt_result["text"])
+        await update_status(redis, task_id, TaskStatus.LLM, stt_result["text"])
         summary = (await (await llm_step.kiq(stt_result["text"])).wait_result()).return_value
         
-        await update_status(tracker, redis, task_id, TaskStatus.SAVING, summary)
+        await update_status(redis, task_id, TaskStatus.SAVING, summary)
         lecture_id = (await (await save_step.kiq(
             user_id,
             filename,
@@ -93,7 +88,7 @@ async def run_audio_pipeline(
             summary
         )).wait_result()).return_value
 
-        await update_status(tracker, redis, task_id, TaskStatus.FINISH, lecture_id)
+        await update_status(redis, task_id, TaskStatus.FINISH, lecture_id)
         
     except Exception as e:
         print(f"Error in audio pipeline {e}")

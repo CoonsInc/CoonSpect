@@ -1,5 +1,5 @@
 from redis.asyncio import Redis
-from taskiq import TaskiqDepends, TaskiqState
+from taskiq import TaskiqDepends
 from src.infra.taskiq import broker
 from src.infra.redis import get_redis
 from src.services.stt import STTService, get_stt_service
@@ -10,7 +10,7 @@ from typing import Any
 from uuid import UUID
 from asyncio import sleep
 from src.tasks.tasks import update_status
-from taskiq.depends.progress_tracker import ProgressTracker
+from taskiq.depends.progress_tracker import ProgressTracker, TaskState
 from src.services.s3 import S3Service, get_s3_service
 from src.tasks.status import TaskStatus
 
@@ -55,21 +55,20 @@ async def run_audio_pipeline(
     bucket: str,
     filename: str,
     redis: Redis = TaskiqDepends(get_redis),
-    s3_service: S3Service = TaskiqDepends(get_s3_service),
-    tracker: ProgressTracker = TaskiqDepends(),
+    s3_service: S3Service = TaskiqDepends(get_s3_service)
 ):
     filepath = f"{bucket}/{filename}"
     try:
-        await update_status(tracker, redis, task_id, TaskStatus.UPLOADING, filename)
+        await update_status(redis, task_id, TaskStatus.UPLOADING, filename)
         await s3_service.wait_object(bucket, filename)
 
-        await update_status(tracker, redis, task_id, TaskStatus.STT, filename)
+        await update_status(redis, task_id, TaskStatus.STT, filename)
         stt_result = (await (await stt_step.kiq(bucket, filename)).wait_result()).return_value
         
-        await update_status(tracker, redis, task_id, TaskStatus.LLM, stt_result["text"])
+        await update_status(redis, task_id, TaskStatus.LLM, stt_result["text"])
         summary = (await (await llm_step.kiq(stt_result["text"])).wait_result()).return_value
         
-        await update_status(tracker, redis, task_id, TaskStatus.SAVING, summary)
+        await update_status(redis, task_id, TaskStatus.SAVING, summary)
         lecture_id = (await (await save_step.kiq(
             user_id,
             filename,
@@ -77,7 +76,7 @@ async def run_audio_pipeline(
             summary
         )).wait_result()).return_value
 
-        await update_status(tracker, redis, task_id, TaskStatus.FINISH, lecture_id)
+        await update_status(redis, task_id, TaskStatus.FINISH, lecture_id)
         
     except Exception as e:
         print(f"Error in audio pipeline {e}")

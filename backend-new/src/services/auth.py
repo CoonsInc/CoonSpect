@@ -2,10 +2,10 @@ from uuid import UUID
 from typing import NamedTuple
 from fastapi import HTTPException, Depends, WebSocket, status
 from starlette.requests import HTTPConnection
+from loguru import logger
 
 from src.models.token import Token, TokenType
 from src.services.token import TokenService, TokenException, TokenExpiredException, get_token_service
-from src.infra.sql.session import get_db
 from src.infra.sql.models.user import User
 from src.api.schemas.user import UserCreate
 from src.services.password import PasswordService, get_password_service
@@ -121,6 +121,7 @@ async def authenticate(
                 code=status.WS_1008_POLICY_VIOLATION, 
                 reason=e.detail
             )
+            logger.warning("unauthentificated")
             raise Exception(f"WebSocket Auth Failed: {e.detail}")
             
         raise e

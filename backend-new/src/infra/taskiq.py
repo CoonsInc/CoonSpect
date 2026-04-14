@@ -7,7 +7,9 @@ from src.settings import settings
 # 1. Настраиваем хранилище результатов (Result Backend)
 # Именно сюда воркеры будут записывать ответы, чтобы ты мог их забрать через get_result()
 result_backend = RedisAsyncResultBackend(
-    redis_url=str(settings.REDIS_URL)
+    redis_url=str(settings.REDIS_URL),
+    keep_results = False,
+    result_ex_time=7200
 )
 
 # 2. Создаем брокер и привязываем к нему Backend

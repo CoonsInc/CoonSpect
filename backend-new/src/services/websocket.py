@@ -4,6 +4,7 @@ import asyncio
 from redis.asyncio import Redis
 import json
 from typing import Any
+from src.tasks.status import TaskStatus
 
 class WebSocketManager:
     """Менеджер WebSocket-соединений."""
@@ -46,8 +47,8 @@ class WebSocketManager:
             return
         
         try:
+            logger.debug(f"Sent to {task_id}: {message[:100]+"..." if len(message) > 100 else message}")
             await ws.send_text(message)
-            logger.debug(f"Sent to {task_id}: {message[:100]}...")
         except WebSocketDisconnect:
             logger.warning(f"Client {task_id} disconnected during send")
             await self.disconnect(task_id)
@@ -67,25 +68,32 @@ class WebSocketManager:
         await asyncio.gather(*tasks)
         logger.info("All WebSocket connections cleaned up")
 
-    async def redis_updates_reader(self, redis: Redis):
+_wsmanager = WebSocketManager()
+
+async def redis_updates_reader(redis: Redis):
         """Фоновый слушатель Redis Pub/Sub"""
+        ws_manager = get_ws_manager()
         pubsub = redis.pubsub()
         await pubsub.subscribe("task_updates")
         try:
             async for message in pubsub.listen():
                 logger.info(f"RECEIVED MSG FROM REDIS SUBPUB: {message}")
                 if message["type"] == "message":
-                    data: dict[str, Any] = json.loads(message["data"])
-                    task_id: str = data.pop("task_id")
-                    await self.send_message(task_id, json.dumps(data))
+                    task_id: str = message["data"]
+                    status_encoded: str | None = await redis.get(task_id)
+                    if status_encoded is None:
+                        logger.error(f"task_id don't exist {task_id}")
+                        continue
+                    status_decoded: dict[str, Any] = json.loads(status_encoded)
+                    if status_decoded["status"] == TaskStatus.FINISH:
+                        await redis.delete(task_id)
+                    await ws_manager.send_message(task_id, status_encoded)
         except asyncio.CancelledError:
             logger.info("redis_updates_reader shutting down...")
             raise
         finally:
             logger.error("redis_updates_reader is down")
             await pubsub.unsubscribe("task_updates")
-
-_wsmanager = WebSocketManager()
 
 def get_ws_manager() -> WebSocketManager:
     return _wsmanager

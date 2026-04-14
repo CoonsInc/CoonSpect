@@ -36,10 +36,10 @@ class LectureService:
         )
 
     async def get_lecture(self, lecture_id: UUID) -> LectureRead:
-        lecture = await self.lecture_crud.read(lecture_id)
+        lecture = await self.lecture_crud.read_with_user(lecture_id)
         if lecture is None:
             raise HTTPException(404, "Lecture not found")
-        return cast(LectureRead, lecture)
+        return LectureRead.model_validate(lecture)
 
     async def update_lecture(
         self, 
@@ -55,7 +55,7 @@ class LectureService:
             raise HTTPException(403, "Access denied: You are not the owner")
         
         updated = await self.lecture_crud.update(db_obj=lecture, update_data=update_data)
-        return cast(LectureRead, updated)
+        return LectureRead.model_validate(updated)
 
     async def delete_lecture(self, lecture_id: UUID, user: User) -> None:
         lecture = await self.lecture_crud.read(lecture_id)

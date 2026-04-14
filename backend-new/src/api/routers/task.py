@@ -4,6 +4,7 @@ from src.services.auth import authenticate
 from src.api.schemas.status import Status
 from src.services.task import TaskService, get_task_service
 from src.services.websocket import WebSocketManager, get_ws_manager
+from loguru import logger
 
 router = APIRouter(prefix="/task")
 
@@ -30,21 +31,22 @@ async def websocket_endpoint(
     ws_manager: WebSocketManager = Depends(get_ws_manager),
     service: TaskService = Depends(get_task_service)
 ):
-    user_task_id = service.get_user_task_id(user)
-    
-    task_status = await service.get_task_status(user_task_id)
-    if not task_status:
+    task_id = service.get_task_id(user)
+    first_msg = await service.ws_start(task_id)
+
+    if not first_msg:
+        logger.warning(f"User {user.id} don't have task to be tracked")
         await websocket.close()
         return
         
-    await ws_manager.connect(websocket, user_task_id)
-    await ws_manager.send_message(user_task_id, task_status)
+    await ws_manager.connect(websocket, task_id)
+    await ws_manager.send_message(task_id, first_msg)
 
     try:
         while True:
             await websocket.receive_text()
     except WebSocketDisconnect:
-        await ws_manager.disconnect(user_task_id)
+        await ws_manager.disconnect(task_id)
     except Exception:
-        await ws_manager.disconnect(user_task_id)
+        await ws_manager.disconnect(task_id)
         await websocket.close()

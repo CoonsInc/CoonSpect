@@ -1,7 +1,7 @@
 import math
 from uuid import UUID
-from sqlalchemy import select, desc, asc, func
-from sqlalchemy.orm import joinedload
+from sqlalchemy import select, desc, asc, func, collate
+from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import Depends
 
@@ -25,7 +25,7 @@ class LectureCRUD(BaseCRUD[Lecture]):
         if user_id:
             filters.append(Lecture.user_id == user_id)
         
-        # Считаем общее количество для пагинации
+        # подсчёт общего количества
         count_stmt = select(func.count(Lecture.id)).where(*filters)
         result = await self.db.execute(count_stmt)
         total = result.scalar() or 0
@@ -34,9 +34,13 @@ class LectureCRUD(BaseCRUD[Lecture]):
         if page > pages or page < 1:
             return [], total, pages
 
-        # Сортировка
+        # сортировка с фиксом для name
         sort_func = desc if order == "desc" else asc
-        column = getattr(Lecture, sort_by, Lecture.created_at)
+        if sort_by == "name":
+            # принудительная байтовая сортировка (как в Python)
+            column = collate(Lecture.name, "C")
+        else:
+            column = getattr(Lecture, sort_by, Lecture.created_at)
 
         stmt = (
             select(Lecture)
@@ -49,6 +53,12 @@ class LectureCRUD(BaseCRUD[Lecture]):
         
         res = await self.db.execute(stmt)
         return list(res.scalars().all()), total, pages
+    
+    async def read_with_user(self, id: UUID) -> Lecture | None:
+        """Получает лекцию вместе с пользователем (один дополнительный запрос)."""
+        stmt = select(Lecture).where(Lecture.id == id).options(selectinload(Lecture.user))
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
 
 async def get_lecture_crud(db: AsyncSession = Depends(get_db)) -> LectureCRUD:
     return LectureCRUD(db)
