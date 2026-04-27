@@ -7,7 +7,8 @@ import Heading from "../atoms/Heading";
 import Button from "../atoms/Button";
 import Icon from "../atoms/Icon";
 import Text from "../atoms/Text";
-import { copyToClipboard, applyFormat, parseMarkdownToHtml } from "../../utils/mdUtils";
+import { copyToClipboard, applyFormat } from "../../utils/mdUtils";
+import MarkdownViewer from "../../utils/MarkdownViewer"; // Убедись, что путь правильный
 
 interface EditorSectionProps {
   initialText: string;
@@ -108,8 +109,12 @@ const EditorSection: React.FC<EditorSectionProps> = ({
         </div>
       );
     }
-    const htmlContent = parseMarkdownToHtml(text);
-    return <div className="h-full" dangerouslySetInnerHTML={{ __html: htmlContent }} />;
+    
+    return (
+      <div className="h-full pr-2">
+        <MarkdownViewer content={text} />
+      </div>
+    );
   };
 
   return (
