@@ -4,7 +4,8 @@ import Button from "../atoms/Button";
 import Icon from "../atoms/Icon";
 import Text from "../atoms/Text";
 import AudioSearchPanel from "./AudioSearchPanel";
-import { parseMarkdownToHtml, copyToClipboard } from "../../utils/mdUtils";
+import { copyToClipboard } from "../../utils/mdUtils";
+import MarkdownViewer from "../../utils/MarkdownViewer";
 
 interface ViewLectureSectionProps {
   title: string;
@@ -99,8 +100,9 @@ const ViewLectureSection: React.FC<ViewLectureSectionProps> = ({
           <div 
             ref={contentRef}
             className="prose prose-invert max-w-none text-[var(--color-text-primary)] leading-relaxed"
-            dangerouslySetInnerHTML={{ __html: parseMarkdownToHtml(text) }} 
-          />
+          >
+            <MarkdownViewer content={text} />
+          </div>
         </div>
 
         {/* Плеер */}
