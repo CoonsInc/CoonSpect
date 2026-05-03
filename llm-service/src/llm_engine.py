@@ -112,7 +112,6 @@ class LLMEngine:
                 "summary": "\n\n---\n\n".join(full_summary),
                 "success": True,
                 "chunks_processed": len(chunks),
-                # "sources": list(used_sources)
             }
             
         except Exception as e:

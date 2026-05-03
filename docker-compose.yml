@@ -72,21 +72,23 @@ services:
       - ./llm-service/data:/app/data
 
   backend:
-    build: ./backend-new/
+    build: ./backend/
     container_name: coonspect-backend
     ports:
       - "8000:8000"
     env_file:
       - .env
-    # depends_on:
-    #   db:
-    #     condition: service_healthy
-    #   redis:
-    #     condition: service_healthy
-    #   storage:
-    #     condition: service_healthy
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      storage:
+        condition: service_healthy
     networks:
       - coonspect-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   stt-service:
     build: ./stt-service/
@@ -114,6 +116,8 @@ services:
       - stt_models:/app/cache
     networks:
       - coonspect-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   frontend:
     build: ./frontend/

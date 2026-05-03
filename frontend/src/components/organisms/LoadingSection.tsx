@@ -9,7 +9,6 @@ interface LoadingSectionProps {
 const statusLabels: Record<string, string> = {
   uploading: "Загрузка аудио...",
   stt: "Преобразование речи в текст...",
-  rag: "Обработка RAG (поиск информации)...",
   llm: "Генерация конспекта LLM...",
   finish: "Готово! Конспект сформирован",
 };
@@ -17,12 +16,11 @@ const statusLabels: Record<string, string> = {
 const stepLabels: Record<string, string> = {
   uploading: "Загрузка",
   stt: "STT",
-  rag: "RAG",
   llm: "LLM",
   finish: "Готово",
 };
 
-const steps = ["uploading", "stt", "rag", "llm", "finish"];
+const steps = ["uploading", "stt", "llm", "finish"];
 
 const LoadingSection: React.FC<LoadingSectionProps> = ({ progressStatus }) => {
   const currentStatus = progressStatus 
