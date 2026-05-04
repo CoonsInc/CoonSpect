@@ -5,7 +5,6 @@ import { authApi } from '../api/authApi';
 import type { User } from '../types/users';
 
 import { useTextStore } from './textStore';
-import { useCatalogStore } from './catalogStore';
 
 interface AuthState {
   user: User | null;

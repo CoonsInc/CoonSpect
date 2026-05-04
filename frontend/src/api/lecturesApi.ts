@@ -12,3 +12,9 @@ export async function editLecture(lectureId: string, updateData: LectureUpdate):
     const response = await apiClient.patch(`/lecture/edit/${lectureId}`, updateData);
     return response.data;
 }
+
+export async function getLectureAudioLink(lectureId: string): Promise<{ status: string, data: string }> {
+    console.log(`[FRONT] Fetching audio link for ${lectureId}`);
+    const response = await apiClient.get(`/lecture/audiolink/${lectureId}`);
+    return response.data; 
+}

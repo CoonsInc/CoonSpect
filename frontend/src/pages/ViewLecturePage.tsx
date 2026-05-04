@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTextStore } from "../stores";
 import Header from "../components/organisms/Header";
 import Footer from "../components/organisms/Footer";
 import HowItWorksSection from "../components/organisms/HowItWorksSection";
@@ -8,11 +9,13 @@ import ViewLectureSection from "../components/organisms/ViewLectureSection";
 
 const ViewLecturePage: React.FC = () => {
     const navigate = useNavigate();
-    const mockData = {
-    title: "Название чужой лекции",
-    text: "### **Пример конспекта**",
-    audioUrl: "" 
-    };
+    const { currentLecture, audioUrl, restoreAudio } = useTextStore();
+
+    useEffect(() => {
+        restoreAudio();
+    }, [restoreAudio]);
+
+    if (!currentLecture) return null;
 
     return (
         <div className="bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] min-h-screen flex flex-col font-sans overflow-x-hidden">
@@ -20,10 +23,10 @@ const ViewLecturePage: React.FC = () => {
         
             <main className="flex-grow">
                 <ViewLectureSection 
-                title={mockData.title}
-                text={mockData.text}
-                audioUrl={mockData.audioUrl}
-                onBack={() => navigate(-1)}
+                    title={currentLecture.name}
+                    text={currentLecture.text}
+                    audioUrl={audioUrl ?? undefined} 
+                    onBack={() => navigate(-1)}
                 />
             </main>
 

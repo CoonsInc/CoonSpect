@@ -17,11 +17,21 @@ export async function startAndTrackLectureTask(
         throw new Error("Не удалось получить URL для загрузки файла");
     }
 
+    let finalUploadUrl = upload_url;
+    try {
+        if (finalUploadUrl.startsWith('http')) {
+            const urlObj = new URL(finalUploadUrl);
+            finalUploadUrl = urlObj.pathname + urlObj.search;
+        }
+    } catch (e) {
+        console.warn('Не удалось распарсить upload URL', e);
+    }
+
     console.log(`[FRONT] Task initialized, starting direct S3 upload...`);
     onStatusChange?.("Загрузка файла на сервер...");
 
     try {
-        const uploadRes = await fetch(upload_url, {
+        const uploadRes = await fetch(finalUploadUrl, {
             method: 'PUT',
             body: file,
             headers: {

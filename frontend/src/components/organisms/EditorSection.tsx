@@ -8,7 +8,7 @@ import Button from "../atoms/Button";
 import Icon from "../atoms/Icon";
 import Text from "../atoms/Text";
 import { copyToClipboard, applyFormat } from "../../utils/mdUtils";
-import MarkdownViewer from "../../utils/MarkdownViewer"; // Убедись, что путь правильный
+import MarkdownViewer from "../../utils/MarkdownViewer";
 
 interface EditorSectionProps {
   initialText: string;
@@ -21,7 +21,7 @@ const EditorSection: React.FC<EditorSectionProps> = ({
   onSave,
   onBack
 }) => {
-  const { processedText, setProcessedText, lectureTitle: storeTitle, audioUrl, audioFile, isSaving } = useTextStore();
+  const { processedText, setProcessedText, setLectureTitle, lectureTitle: storeTitle, audioUrl, audioFile, isSaving } = useTextStore();
   
   const [text, setText] = useState(processedText || initialText);
   const [localTitle, setLocalTitle] = useState(storeTitle);
@@ -161,7 +161,10 @@ const EditorSection: React.FC<EditorSectionProps> = ({
             <input
               type="text"
               value={localTitle}
-              onChange={(e) => setLocalTitle(e.target.value)}
+              onChange={(e) => {
+                setLocalTitle(e.target.value); 
+                if (setLectureTitle) setLectureTitle(e.target.value);
+              }}
               placeholder="Например: Введение в нейронные сети"
               className="w-full bg-[var(--color-bg-accent)] text-[var(--color-text-primary)] px-4 py-3 rounded-lg border border-[var(--color-border)] outline-none focus:border-[var(--color-text-purple)] transition-all"
             />

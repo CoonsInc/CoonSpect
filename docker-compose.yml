@@ -87,8 +87,6 @@ services:
         condition: service_healthy
     networks:
       - coonspect-net
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
 
   stt-service:
     build: ./stt-service/
@@ -116,8 +114,6 @@ services:
       - stt_models:/app/cache
     networks:
       - coonspect-net
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
 
   frontend:
     build: ./frontend/

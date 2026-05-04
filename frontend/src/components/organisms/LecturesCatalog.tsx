@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useCatalogStore, useTextStore, useAppStore, useAuthStore } from '../../stores/';
+import { useCatalogStore, useAuthStore } from '../../stores/';
 import Text from '../atoms/Text';
 import Button from '../atoms/Button';
 import Heading from '../atoms/Heading';
@@ -9,8 +9,8 @@ import LectureCard from '../molecules/LectureCard';
 
 const LecturesCatalog: React.FC = () => {
   const navigate = useNavigate();
-  const { setAppState } = useAppStore();
-  const { loadLecture } = useTextStore();
+  // const { setAppState } = useAppStore();
+  // const { loadLecture } = useTextStore();
 
   const { user } = useAuthStore();
   
@@ -30,14 +30,8 @@ const LecturesCatalog: React.FC = () => {
     }
   }, [fetchLectures]);
 
-  const handleOpenLecture = async (id: string) => {
-    try {
-      await loadLecture(id);
-      setAppState("editor");
-      navigate('/');
-    } catch (e) {
-      alert("Не удалось загрузить лекцию");
-    }
+  const handleOpenLecture = (id: string) => {
+    navigate(`/lec/${id}`);
   };
 
   if (isLoading && lectures.length === 0) {

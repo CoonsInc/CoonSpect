@@ -1,7 +1,7 @@
 // pages/MainPage.tsx
 import type { FC } from "react";
 import { useTextStore, useAuthStore, useAppStore } from "../stores";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import Header from "../components/organisms/Header";
 import UploadSection from "../components/organisms/UploadSection";
 import LoadingSection from "../components/organisms/LoadingSection";
@@ -13,9 +13,22 @@ import { useEffect } from 'react';
 
 const MainPage: FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuthStore();
   const { appState, setAppState } = useAppStore();
-  const { processedText, generateTranscript, progressStatus, isSaving, saveLectureChanges } = useTextStore();
+  const { processedText, generateTranscript, progressStatus, isSaving, saveLectureChanges, restoreAudio, reset} = useTextStore();
+
+  useEffect(() => {
+    if (appState === 'editor') {
+      restoreAudio();
+    }
+  }, [appState, restoreAudio]);
+
+  useEffect(() => {
+    if (appState === 'upload' && processedText) {
+      setAppState('editor');
+    }
+  }, [appState, processedText, setAppState]);
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -51,6 +64,7 @@ const MainPage: FC = () => {
       await saveLectureChanges(newText, title);
       alert("Конспект успешно сохранён!");
 
+      reset();
       navigate("/lectures");
     } catch (e) {
       alert("Ошибка при сохранении. Попробуйте еще раз.");
@@ -82,7 +96,16 @@ const MainPage: FC = () => {
           <EditorSection
             initialText={processedText}
             onSave={handleSave}
-            onBack={() => setAppState("upload")}
+            onBack={() => {
+              reset(); 
+              
+              if (location.pathname.startsWith('/lec/')) {
+                setAppState("upload"); 
+                navigate('/lectures'); 
+              } else {
+                setAppState("upload");
+              }
+            }}
           />
         );
 
