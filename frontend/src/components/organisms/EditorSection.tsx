@@ -9,7 +9,10 @@ import Icon from "../atoms/Icon";
 import Text from "../atoms/Text";
 import { copyToClipboard, applyFormat } from "../../utils/mdUtils";
 import MarkdownViewer from "../../utils/MarkdownViewer";
-import { jsPDF } from "jspdf";
+import pdfMake from "pdfmake/build/pdfmake";
+import pdfFonts from "pdfmake/build/vfs_fonts";
+
+(pdfMake as any).addVirtualFileSystem(pdfFonts);
 
 interface EditorSectionProps {
   initialText: string;
@@ -114,28 +117,33 @@ const EditorSection: React.FC<EditorSectionProps> = ({
       }
 
       case "pdf": {
-        const doc = new jsPDF();
-        
-        const htmlContent = convertMarkdownToHtml(text);
-        const fullHtml = `
-          <div style="font-family: Arial, sans-serif; padding: 20px;">
-            <h1 style="color: #6B21A8;">${localTitle}</h1>
-            ${htmlContent}
-          </div>
-        `;
-        
-        doc.html(fullHtml, {
-          callback: function(doc) {
-            doc.save(`${safeTitle}.pdf`);
-          },
-          x: 10,
-          y: 10,
-          width: 190,
-          windowWidth: 800
-        });
-        return;
-      }
+  const lines = text.split('\n');
+  const content: any[] = [];
+  
+  lines.forEach((line) => {
+    if (line.trim() === '') {
+      content.push({ text: '', margin: [0, 5] });
+    } else if (line.startsWith('# ')) {
+      content.push({ text: line.substring(2), bold: true, fontSize: 16, margin: [0, 10, 0, 5] });
+    } else if (line.startsWith('## ')) {
+      content.push({ text: line.substring(3), bold: true, fontSize: 14, margin: [0, 8, 0, 4] });
+    } else if (line.startsWith('### ')) {
+      content.push({ text: line.substring(4), bold: true, fontSize: 12, margin: [0, 6, 0, 3] });
+    } else {
+      content.push({ text: line, fontSize: 11, margin: [0, 2] });
+    }
+  });
 
+  const docDefinition = {
+    content: [
+      { text: localTitle, fontSize: 20, bold: true, margin: [0, 0, 0, 15], alignment: 'center' },
+      ...content
+    ]
+  };
+
+  pdfMake.createPdf(docDefinition).download(`${safeTitle}.pdf`);
+  return;
+}
       default:
         content = text;
         fileName = `${safeTitle}.txt`;
