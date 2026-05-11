@@ -3,9 +3,9 @@ import { useAuthStore } from "../stores";
 
 import LoginPage from '../pages/LoginPage';
 import MainPage from '../pages/MainPage';
-import LecturesPage from '../pages/LecturesPage';
+import MyLecturesPage from '../pages/MyLecturesPage';
+import AllLecturesPage from '../pages/AllLecturesPage';
 import ProfilePage from '../pages/ProfilePage';
-// import ViewLecturePage from '../pages/ViewLecturePage';
 import LectureRouterPage from '../pages/LectureRouterPage';
 
 import ProtectedRoute from './ProtectedRoute';
@@ -13,12 +13,6 @@ import Spinner from '../components/atoms/Spinner';
 
 const AppRoutes = () => {
   const { isInitializing } = useAuthStore();
-  // const location = useLocation();
-  // const { setCurrentRoute } = useAppStore();
-
-  // useEffect(() => {
-  //   setCurrentRoute(location.pathname);
-  // }, [location.pathname, setCurrentRoute]);
 
   if (isInitializing) {
     return (
@@ -38,11 +32,12 @@ const AppRoutes = () => {
       <Route path="/" element={<Navigate to="/upload" replace />} />
       <Route path="/upload" element={<MainPage />} />
       <Route path="/lec/:id" element={<LectureRouterPage />} />
+      <Route path="/lectures" element={<AllLecturesPage />} />
 
       {/* ЗАЩИЩЕННЫЕ РОУТЫ */}
       <Route element={<ProtectedRoute />}>
         <Route path="/profile" element={<ProfilePage />} />
-        <Route path="/lectures" element={<LecturesPage />} />
+        <Route path="/my-lectures" element={<MyLecturesPage />} />
         {/* <Route path="/view-lecture" element={<ViewLecturePage />} /> */}
       </Route>
       

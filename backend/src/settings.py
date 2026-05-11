@@ -38,6 +38,8 @@ class Settings(BaseSettings):
     STT_SERVICE_PORT: int = 8001
     LLM_SERVICE_HOST : str = "localhost"
     LLM_SERVICE_PORT : int = 8003
+    SEARCH_SERVICE_HOST : str = "localhost" 
+    SEARCH_SERVICE_PORT : int = 8004
 
     # Pydantic config
     model_config = SettingsConfigDict(
@@ -66,6 +68,10 @@ class Settings(BaseSettings):
     @property
     def LLM_SERVICE_URL(self) -> str:
         return f"http://{self.LLM_SERVICE_HOST}:{self.LLM_SERVICE_PORT}"
+    
+    @property
+    def SEARCH_SERVICE_URL(self) -> str:
+        return f"http://{self.SEARCH_SERVICE_HOST}:{self.SEARCH_SERVICE_PORT}"
     
     @property
     def ALLOWED_EXTENSIONS(self) -> set[str]:

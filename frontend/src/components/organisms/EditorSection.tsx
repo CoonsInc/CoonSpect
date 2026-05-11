@@ -1,5 +1,6 @@
 // components/organisms/EditorSection.tsx
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef} from "react";
+import { useNavigate } from 'react-router-dom';
 import { useTextStore } from "../../stores";
 import EditorToolbar from "../molecules/EditorToolbar";
 import AudioSearchPanel from "./AudioSearchPanel";
@@ -21,16 +22,17 @@ const EditorSection: React.FC<EditorSectionProps> = ({
   onSave,
   onBack
 }) => {
-  const { processedText, setProcessedText, setLectureTitle, lectureTitle: storeTitle, audioUrl, audioFile, isSaving } = useTextStore();
+  const { processedText, setProcessedText, setLectureTitle, deleteCurrentLecture, lectureTitle: storeTitle, audioUrl, audioFile, isSaving, activeLectureId } = useTextStore();
   
   const [text, setText] = useState(processedText || initialText);
   const [localTitle, setLocalTitle] = useState(storeTitle);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  const navigate = useNavigate();
+  const [isDeleting, setIsDeleting] = useState(false); 
+
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-
-  const currentAudioId = audioFile?.name || null;
 
   useEffect(() => {
     setText(processedText || initialText);
@@ -90,6 +92,30 @@ const EditorSection: React.FC<EditorSectionProps> = ({
       textarea.focus();
       textarea.setSelectionRange(newCursorPos, newCursorPos);
     }, 0);
+  };
+
+  const handleDelete = async () => {
+    if (!activeLectureId) {
+      alert("Нет активной лекции для удаления");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Вы уверены, что хотите удалить эту лекцию? Это действие нельзя отменить."
+    );
+      
+    if (!confirmed) return;
+
+    setIsDeleting(true);
+    try {
+      await deleteCurrentLecture();
+      navigate('/lectures');
+    } catch (error) {
+      console.error('Ошибка при удалении лекции:', error);
+      alert('Не удалось удалить лекцию. Пожалуйста, попробуйте снова.');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const handleJumpToTime = (time: number) => {
@@ -179,6 +205,8 @@ const EditorSection: React.FC<EditorSectionProps> = ({
             onSave={handleSaveClick}
             onDownload={handleDownloadLocally}
             onCopy={handleCopy}
+            onDelete={handleDelete}
+            isDeleting={isDeleting} 
           />
         </div>
 
@@ -215,7 +243,6 @@ const EditorSection: React.FC<EditorSectionProps> = ({
             <Heading level={3} className="text-[var(--color-text-purple)] mb-3 text-base flex items-center gap-2">
                🎵 {audioFile?.name || 'Аудиофайл'}
             </Heading>
-            {/* Добавлен ref для управления извне */}
             <audio ref={audioRef} controls src={audioUrl} className="w-full rounded-lg">
               Ваш браузер не поддерживает воспроизведение аудио.
             </audio>
@@ -226,7 +253,6 @@ const EditorSection: React.FC<EditorSectionProps> = ({
       <AudioSearchPanel
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
-        audioId={currentAudioId}
         onTimeClick={handleJumpToTime}
       />
     </section>

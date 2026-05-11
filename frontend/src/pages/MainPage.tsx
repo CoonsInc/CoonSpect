@@ -24,11 +24,11 @@ const MainPage: FC = () => {
     }
   }, [appState, restoreAudio]);
 
-  useEffect(() => {
-    if (appState === 'upload' && processedText) {
-      setAppState('editor');
-    }
-  }, [appState, processedText, setAppState]);
+  // useEffect(() => {
+  //   if (appState === 'upload' && processedText) {
+  //     setAppState('editor');
+  //   }
+  // }, [appState, processedText, setAppState]);
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {

@@ -8,9 +8,11 @@ interface EditorToolbarProps {
   onDownload?: () => void;
   onSave?: () => void;
   onCopy?: () => void;
+  onDelete?: () => void;
+  isDeleting?: boolean;
 }
 
-const EditorToolbar: React.FC<EditorToolbarProps> = ({ onFormat, onSave, onCopy, onDownload }) => {
+const EditorToolbar: React.FC<EditorToolbarProps> = ({ onFormat, onSave, onCopy, onDownload, onDelete, isDeleting }) => {
   const formatButtons = [
     { icon: "Bold", action: "bold", title: "Жирный текст" },
     { icon: "Italic", action: "italic", title: "Курсив" },
@@ -22,9 +24,10 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({ onFormat, onSave, onCopy,
   ] as const;
 
   const actionButtons = [
-    { icon: "Download", action: onDownload, show: onDownload, title: "Скачать на ПК" },
-    { icon: "Copy", action: onCopy, show: onCopy, title: "Скопировать текст" },
-    { icon: "Save", action: onSave, show: onSave, title: "Сохранить на сервер" },
+    { icon: "Download", action: onDownload, show: onDownload, title: "Скачать на ПК", danger: false },
+    { icon: "Copy", action: onCopy, show: onCopy, title: "Скопировать текст", danger: false },
+    { icon: "Save", action: onSave, show: onSave, title: "Сохранить на сервер", danger: false },
+    { icon: "Trash", action: onDelete, show: onDelete, title: "Удалить лекцию", danger: true },
   ] as const;
 
   return (
@@ -46,7 +49,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({ onFormat, onSave, onCopy,
 
       <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2 w-full sm:w-auto pt-3 sm:pt-0 border-t sm:border-none border-[var(--color-border)]">
         {actionButtons.map(
-          ({ icon, action, show, title }) =>
+          ({ icon, action, show, title, danger }) =>
             show && (
               <Button
                 key={icon}
@@ -54,7 +57,11 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({ onFormat, onSave, onCopy,
                 variant="outline"
                 size="sm"
                 title={title}
-                className="border-[var(--color-text-purple)] text-[var(--color-text-purple)] hover:bg-[var(--color-text-purple)] hover:text-white"
+                disabled={isDeleting}
+                className={danger 
+                  ? "border-red-500 text-red-500 hover:bg-red-500 hover:text-white" 
+                  : "border-[var(--color-text-purple)] text-[var(--color-text-purple)] hover:bg-[var(--color-text-purple)] hover:text-white"
+                }
               >
                 <Icon name={icon as any} className="w-4 h-4" />
               </Button>

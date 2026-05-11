@@ -10,6 +10,7 @@ from src.api.routers.auth import router as auth_router
 from src.api.routers.task import router as task_router
 from src.api.routers.user import router as user_router
 from src.api.routers.lecture import router as lecture_router
+from src.api.routers.search import router as search_router
 from src.infra.redis import get_redis
 from src.infra.s3 import setup_s3
 from src.services.websocket import get_ws_manager, redis_updates_reader
@@ -44,6 +45,7 @@ app.include_router(auth_router)
 app.include_router(task_router)
 app.include_router(user_router)
 app.include_router(lecture_router)
+app.include_router(search_router)
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):

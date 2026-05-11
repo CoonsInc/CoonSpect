@@ -18,3 +18,9 @@ export async function getLectureAudioLink(lectureId: string): Promise<{ status: 
     const response = await apiClient.get(`/lecture/audiolink/${lectureId}`);
     return response.data; 
 }
+
+export async function deleteLecture(lectureId: string): Promise<{ status: string; message: string }> {
+    console.log(`[FRONT] Deleting lecture ${lectureId}`);
+    const response = await apiClient.delete(`/lecture/delete/${lectureId}`);
+    return response.data;
+}

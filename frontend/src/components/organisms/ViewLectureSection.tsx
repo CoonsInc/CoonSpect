@@ -50,7 +50,7 @@ const ViewLectureSection: React.FC<ViewLectureSectionProps> = ({
   };
 
   return (
-    <section className="py-20 px-6 mt-16 bg-[var(--color-bg-primary)] min-h-screen relative overflow-hidden">
+    <section className="py-4 px-6 mt-16 bg-[var(--color-bg-primary)] min-h-screen relative overflow-hidden">
       <div className="w-full max-w-4xl mx-auto">
         
         {/* Верхняя панель (Назад + Скопировать/Скачать) */}
@@ -96,7 +96,7 @@ const ViewLectureSection: React.FC<ViewLectureSectionProps> = ({
         </div>
 
         {/* Текст конспекта */}
-        <div className="bg-[var(--color-bg-accent)] rounded-lg border border-[var(--color-border)] p-6 sm:p-10 min-h-[500px] shadow-sm overflow-x-auto">
+        <div className="bg-[var(--color-bg-accent)] rounded-lg border border-[var(--color-border)] p-6 sm:p-10 h-[450px] shadow-sm overflow-y-auto">
           <div 
             ref={contentRef}
             className="prose prose-invert max-w-none text-[var(--color-text-primary)] leading-relaxed"
@@ -107,7 +107,7 @@ const ViewLectureSection: React.FC<ViewLectureSectionProps> = ({
 
         {/* Плеер */}
         {audioUrl && (
-          <div className="mt-8 max-w-md mx-auto sm:mx-0">
+          <div className="mt-8 max-w-md mx-auto">
             <Heading level={3} className="text-[var(--color-text-purple)] mb-3 text-base">
               🎵 Запись лекции
             </Heading>
@@ -123,7 +123,6 @@ const ViewLectureSection: React.FC<ViewLectureSectionProps> = ({
       <AudioSearchPanel
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
-        audioId={title}
         onTimeClick={handleJumpToTime}
       />
     </section>

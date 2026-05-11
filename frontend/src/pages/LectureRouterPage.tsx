@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useTextStore, useAuthStore, useAppStore } from '../stores';
 import MainPage from './MainPage';
-import ViewLecturePage from './ViewLecturePage';
+import Header from '../components/organisms/Header';
+import Footer from '../components/organisms/Footer';
+import ViewLectureSection from '../components/organisms/ViewLectureSection';
 import Spinner from '../components/atoms/Spinner';
 
 const LectureRouterPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { loadLecture, currentLecture, progressStatus } = useTextStore();
+  const navigate = useNavigate();
+  const { loadLecture, currentLecture, progressStatus, audioUrl, reset } = useTextStore();
   const { user } = useAuthStore();
   const { setAppState } = useAppStore();
   
@@ -27,7 +30,12 @@ const LectureRouterPage: React.FC = () => {
         setError(true);
         setIsLoading(false);
       });
-  }, [id, loadLecture, setAppState]);
+    
+    return () => {
+      reset(); 
+      setAppState('upload');
+    };
+  }, [id, loadLecture, setAppState, reset]);
 
   if (isLoading || progressStatus === 'loading') {
     return (
@@ -41,7 +49,9 @@ const LectureRouterPage: React.FC = () => {
     return (
       <div className="bg-[var(--color-bg-primary)] min-h-screen flex flex-col items-center justify-center text-white">
         <h1 className="text-2xl font-bold mb-4">Лекция не найдена</h1>
-        <p className="text-[var(--color-text-secondary)]">Возможно, ссылка устарела или удалена.</p>
+        <button onClick={() => navigate('/lectures')} className="text-[var(--color-text-purple)] underline">
+          Вернуться в каталог
+        </button>
       </div>
     );
   }
@@ -51,7 +61,18 @@ const LectureRouterPage: React.FC = () => {
   if (isOwner) {
     return <MainPage />;
   } else {
-    return <ViewLecturePage />;
+    return (
+      <div className="bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] min-h-screen font-sans overflow-x-hidden">
+        <Header /> 
+        <ViewLectureSection 
+          title={currentLecture.name || 'Без названия'} 
+          text={currentLecture.text || ''} 
+          audioUrl={audioUrl || undefined}
+          onBack={() => navigate(-1)} 
+        />
+        <Footer />
+      </div>
+    );
   }
 };
 

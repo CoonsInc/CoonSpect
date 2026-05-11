@@ -3,7 +3,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Lecture } from '../types/lecture.ts';
 import { startAndTrackLectureTask, getLectureResult,  } from '../api/generateApi';
-import { getLectureAudioLink, editLecture } from '../api/lecturesApi'
+import { getLectureAudioLink, editLecture, deleteLecture } from '../api/lecturesApi'
 
 interface AudioState {
   audioFile: File | null;
@@ -20,6 +20,7 @@ interface AudioState {
   setAudioFile: (file: File | null) => void;
   setLectureTitle: (title: string) => void;
   setProcessedText: (text: string) => void;
+  deleteCurrentLecture: () => Promise<void>;
   restoreAudio: () => Promise<void>;
   reset: () => void;
   clearAudioFile: () => void;
@@ -102,7 +103,7 @@ export const useTextStore = create<AudioState>()(
         }
       },
 
-restoreAudio: async () => {
+      restoreAudio: async () => {
         const id = get().activeLectureId;
         const currentAudio = get().audioUrl;
 
@@ -144,6 +145,10 @@ restoreAudio: async () => {
       },
 
       loadLecture: async (id: string) => {
+        const savedId = get().activeLectureId;
+        const savedText = get().processedText;
+        const savedTitle = get().lectureTitle;
+
         set({ isSaving: true, progressStatus: 'loading' });
         try {
           const lecture = await getLectureResult(id);
@@ -159,17 +164,42 @@ restoreAudio: async () => {
             }
           }
 
+          const isSameLecture = savedId === id;
+
           set({
             activeLectureId: lecture.id,
-            lectureTitle: lecture.name || '',
-            processedText: lecture.text || lecture.transcription || '',
             currentLecture: lecture,
             audioUrl: finalAudioUrl, 
-            progressStatus: 'finish'
+            progressStatus: 'finish',
+            lectureTitle: (isSameLecture && savedTitle) ? savedTitle : (lecture.name || ''),
+            processedText: (isSameLecture && savedText) ? savedText : (lecture.text || lecture.transcription || '')
           });
         } catch (e) {
           console.error('[FRONT] Failed to load lecture:', e);
           set({ progressStatus: 'error' });
+        } finally {
+          set({ isSaving: false });
+        }
+      },
+
+      deleteCurrentLecture: async () => {
+        const id = get().activeLectureId;
+        if (!id) throw new Error("Нет активной лекции для удаления");
+
+        set({ isSaving: true });
+        try {
+            await deleteLecture(id);
+            set({
+              activeLectureId: null,
+              lectureTitle: '',
+              processedText: '',
+              currentLecture: null,
+              audioUrl: null,
+              audioFile: null,
+            });
+        } catch (e) {
+          console.error('[FRONT] Failed to delete lecture:', e);
+          throw e;
         } finally {
           set({ isSaving: false });
         }

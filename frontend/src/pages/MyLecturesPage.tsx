@@ -9,7 +9,7 @@ import Button from "../components/atoms/Button";
 import Icon from "../components/atoms/Icon";
 import { useAppStore, useTextStore } from "../stores";
 
-const LecturesPage: React.FC = () => {
+const MyLecturesPage: React.FC = () => {
   const navigate = useNavigate();
   const { setAppState } = useAppStore();
   const { reset } = useTextStore();
@@ -55,4 +55,4 @@ const LecturesPage: React.FC = () => {
   );
 };
 
-export default LecturesPage;
+export default MyLecturesPage;

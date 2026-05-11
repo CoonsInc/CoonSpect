@@ -7,6 +7,7 @@ from src.infra.redis import get_redis
 from src.services.stt import STTService, get_stt_service
 from src.services.llm import LLMService, get_llm_service
 from src.crud.lecture import LectureCRUD, get_lecture_crud
+from src.services.search import SearchService, get_search_service
 from src.infra.sql.models.lecture import Lecture
 from typing import Any
 from uuid import UUID
@@ -42,6 +43,14 @@ async def llm_step(
 ) -> str:
     result = await llm_service.summarize(text)
     return result["summary"]
+
+@broker.task(retry_on_error=True)
+async def index_step(
+    lecture_id: str,
+    segments: list,
+    search_service: SearchService = TaskiqDepends(get_search_service)
+) -> None:
+    await search_service.index_lecture(lecture_id, segments)
 
 @broker.task(retry_on_error = True)
 async def save_step(
@@ -94,6 +103,9 @@ async def run_audio_pipeline(
         )).wait_result()).return_value
 
         await update_status(redis, task_id, TaskStatus.FINISH, lecture_id)
+        
+        if stt_result.get("segments"):
+            await index_step.kiq(lecture_id, stt_result["segments"])
         
     except Exception as e:
         print(f"Error in audio pipeline {e}")
