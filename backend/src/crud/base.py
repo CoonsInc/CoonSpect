@@ -1,17 +1,20 @@
-from typing import Generic, TypeVar, Type, Any, Protocol
+from typing import Any, Protocol, TypeVar
 from uuid import UUID
-from sqlalchemy import select, ColumnElement
-from sqlalchemy.ext.asyncio import AsyncSession
-from pydantic import BaseModel
 
-# Протокол для типизации .id (чтобы Pylance не ругался в .where)
+from pydantic import BaseModel
+from sqlalchemy import ColumnElement, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+
 class HasID(Protocol):
     id: ColumnElement[UUID]
 
+
 ModelType = TypeVar("ModelType", bound=HasID)
 
-class BaseCRUD(Generic[ModelType]):
-    def __init__(self, model: Type[ModelType], db: AsyncSession):
+
+class BaseCRUD[ModelType: HasID]:
+    def __init__(self, model: type[ModelType], db: AsyncSession):
         self.model = model
         self.db = db
 
@@ -38,9 +41,7 @@ class BaseCRUD(Generic[ModelType]):
         return db_obj
 
     async def update(
-        self, 
-        db_obj: ModelType, 
-        update_data: ModelType | dict[str, Any] | BaseModel
+        self, db_obj: ModelType, update_data: ModelType | dict[str, Any] | BaseModel
     ) -> ModelType:
         """
         Обновление записи.
@@ -52,14 +53,13 @@ class BaseCRUD(Generic[ModelType]):
         else:
             # Вытаскиваем данные из переданного объекта модели
             update_dict = {
-                k: v for k, v in update_data.__dict__.items() 
-                if not k.startswith('_')
+                k: v for k, v in update_data.__dict__.items() if not k.startswith("_")
             }
 
         for field, value in update_dict.items():
             if hasattr(db_obj, field):
                 setattr(db_obj, field, value)
-        
+
         await self.db.commit()
         await self.db.refresh(db_obj)
         return db_obj
