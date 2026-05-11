@@ -46,6 +46,7 @@ def sample_lecture(sample_user):
         text="Some text",
         created_at=now,
         updated_at=now,
+        public=True,  # ← FIX 1: Pydantic требует bool, а не None
     )
     lecture.user = sample_user
     return lecture
@@ -166,3 +167,29 @@ async def test_service_delete_lecture_access_denied(
 
     assert exc.value.status_code == 403
     mock_lecture_crud.delete.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_get_lectures_page_invalid_limit(lecture_service):
+    with pytest.raises(HTTPException) as exc:
+        await lecture_service.get_lectures_page(
+            page=1, limit=0, sort_by="name", order="asc", user_id=None
+        )
+    assert exc.value.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_get_lectures_page_forwards_params(lecture_service, mock_lecture_crud):
+    mock_lecture_crud.get_list.return_value = ([], 0, 1)
+
+    await lecture_service.get_lectures_page(
+        page=2,
+        limit=15,
+        sort_by="title",
+        order="desc",
+        user_id=uuid4(),
+        search_name="test",
+    )
+    mock_lecture_crud.get_list.assert_called_once_with(
+        page=2, limit=15, sort_by="title", order="desc", user_id=ANY, search_name="test"
+    )

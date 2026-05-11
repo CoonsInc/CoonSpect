@@ -16,7 +16,7 @@ async def sample_lecture(db_session: AsyncSession, sample_user: User) -> Lecture
         id=uuid4(),
         name="Base Lecture",
         text="Content",
-        audio_url="bucket/test.mp3",
+        audio_url="lectures/test.mp3",
         user_id=sample_user.id,
     )
     db_session.add(lecture)
@@ -39,7 +39,14 @@ async def test_get_lectures_list_pagination(
 ) -> None:
     for i in range(5):
         db_session.add(
-            Lecture(id=uuid4(), name=f"L {i}", text="...", user_id=sample_user.id)
+            Lecture(
+                id=uuid4(),
+                name=f"L {i}",
+                text="...",
+                user_id=sample_user.id,
+                audio_url="lectures/test.mp3",
+                public=True,  # Важно!
+            )
         )
     await db_session.commit()
 
@@ -117,7 +124,11 @@ async def test_delete_lecture_forbidden(
 ) -> None:
     other_user = User(id=uuid4(), username="other", password_hash="hash")
     foreign_lecture = Lecture(
-        id=uuid4(), name="Foreign", text="...", user_id=other_user.id
+        id=uuid4(),
+        name="Foreign",
+        text="...",
+        user_id=other_user.id,
+        audio_url="lectures/test.mp3",
     )
     db_session.add_all([other_user, foreign_lecture])
 
@@ -128,3 +139,91 @@ async def test_delete_lecture_forbidden(
     authorize_override(me)
     response = await client.delete(f"/lecture/delete/{foreign_lecture.id}")
     assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+@pytest.mark.asyncio
+async def test_get_lectures_list_search(
+    client: AsyncClient, db_session: AsyncSession, sample_user: User
+) -> None:
+    """Проверка поиска по названию лекции."""
+    db_session.add_all(
+        [
+            Lecture(
+                id=uuid4(),
+                name="Calculus 101",
+                user_id=sample_user.id,
+                text=".",
+                audio_url=".",
+                public=True,
+            ),
+            Lecture(
+                id=uuid4(),
+                name="History of Art",
+                user_id=sample_user.id,
+                text=".",
+                audio_url=".",
+                public=True,
+            ),
+            Lecture(
+                id=uuid4(),
+                name="Advanced Calculus",
+                user_id=sample_user.id,
+                text=".",
+                audio_url=".",
+                public=True,
+            ),
+        ]
+    )
+    await db_session.commit()
+
+    response = await client.get("/lecture/list?search_name=calculus")
+
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+
+    assert data["total"] == 2
+    for item in data["items"]:
+        assert "Calculus" in item["name"]
+
+
+@pytest.mark.asyncio
+async def test_get_lectures_list_privacy_filter(
+    client: AsyncClient, db_session: AsyncSession, sample_user: User
+) -> None:
+    """Проверка приватности: аноним видит только public, владелец видит всё."""
+    user_a_id = sample_user.id
+
+    db_session.add_all(
+        [
+            Lecture(
+                id=uuid4(),
+                name="Public A",
+                user_id=user_a_id,
+                public=True,
+                text=".",
+                audio_url=".",
+            ),
+            Lecture(
+                id=uuid4(),
+                name="Private A",
+                user_id=user_a_id,
+                public=False,
+                text=".",
+                audio_url=".",
+            ),
+        ]
+    )
+    await db_session.commit()
+
+    response = await client.get("/lecture/list")
+    assert response.status_code == 200
+    data = response.json()
+    names = [item["name"] for item in data["items"]]
+    assert "Public A" in names
+    assert "Private A" not in names
+
+    response = await client.get(f"/lecture/list?user_id={user_a_id}")
+    data = response.json()
+    names = [item["name"] for item in data["items"]]
+    assert "Public A" in names
+    assert "Private A" in names
