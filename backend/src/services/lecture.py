@@ -2,6 +2,7 @@ from typing import cast
 from uuid import UUID
 
 from fastapi import Depends, HTTPException
+from loguru import logger
 
 from src.api.schemas.lecture import LectureRead, LecturesPage, LectureUpdate
 from src.crud.lecture import LectureCRUD, get_lecture_crud
@@ -13,6 +14,17 @@ class LectureService:
     def __init__(self, lecture_crud: LectureCRUD, s3_service: S3Service):
         self.lecture_crud = lecture_crud
         self.s3_service = s3_service
+
+    def _parse_audio_url(self, audio_url: str | None) -> tuple[str, str]:
+        if not audio_url:
+            raise HTTPException(404, "Lecture haven't attached audio")
+
+        parts = audio_url.split("/")
+        if len(parts) != 2:
+            logger.error(f"Invalid audio_url format: {audio_url}")
+            raise HTTPException(500, "Internal error: invalid audio storage format")
+
+        return parts[0], parts[1]  # bucket, filename
 
     async def get_lectures_page(
         self, page: int, limit: int, sort_by: str, order: str, user_id: UUID | None
@@ -61,7 +73,19 @@ class LectureService:
         if user.id != lecture.user_id:
             raise HTTPException(403, "Access denied: You are not the owner")
 
+        audio_url = lecture.audio_url
+
         await self.lecture_crud.delete(db_obj=lecture)
+
+        if audio_url:
+            try:
+                bucket, filename = self._parse_audio_url(audio_url)
+                await self.s3_service.delete(bucket, filename)
+            except Exception:
+                logger.error(
+                    f"Failed to delete S3 object {audio_url}"
+                    "after lecture deletion: {e}"
+                )
 
     async def delete_audiolink(self, lecture_id: UUID, user: User) -> LectureRead:
         lecture = await self.lecture_crud.read(lecture_id)
@@ -71,25 +95,18 @@ class LectureService:
         if user.id != lecture.user_id:
             raise HTTPException(403, "Access denied: You are not the owner")
 
-        audio_url = lecture.audio_url
-        if not audio_url:
-            raise HTTPException(404, "Lecture haven't attached audio")
-
-        bucket, filename = audio_url.split("/")
+        bucket, filename = self._parse_audio_url(lecture.audio_url)
 
         updated = await self.lecture_crud.update(
             db_obj=lecture, update_data={"audio_url": None}
         )
         await self.s3_service.delete(bucket, filename)
+
         return LectureRead.model_validate(updated)
 
     async def get_audiolink(self, lecture_id: UUID) -> str:
         lecture = await self.get_lecture(lecture_id)
-        audio_url = lecture.audio_url
-        if not audio_url:
-            raise HTTPException(404, "Lecture haven't attached audio")
-
-        bucket, filename = audio_url.split("/")
+        bucket, filename = self._parse_audio_url(lecture.audio_url)
         return await self.s3_service.get_download_url(bucket, filename, 43200)
 
 

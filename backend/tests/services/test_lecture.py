@@ -121,3 +121,48 @@ async def test_service_get_audiolink_no_audio(
     with pytest.raises(HTTPException) as exc:
         await lecture_service.get_audiolink(sample_lecture.id)
     assert exc.value.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_service_delete_lecture_with_audio_success(
+    lecture_service, mock_lecture_crud, mock_s3_service, sample_lecture, sample_user
+):
+    """Проверяем, что при удалении лекции удаляется и запись в БД, и файл в S3."""
+    sample_lecture.audio_url = "my-bucket/audio.mp3"
+    mock_lecture_crud.read.return_value = sample_lecture
+
+    await lecture_service.delete_lecture(sample_lecture.id, sample_user)
+
+    mock_lecture_crud.delete.assert_called_once_with(db_obj=sample_lecture)
+
+    mock_s3_service.delete.assert_called_once_with("my-bucket", "audio.mp3")
+
+
+@pytest.mark.asyncio
+async def test_service_delete_lecture_no_audio_success(
+    lecture_service, mock_lecture_crud, mock_s3_service, sample_lecture, sample_user
+):
+    """Проверяем, что если у лекции нет аудио, мы просто удаляем запись из БД."""
+    sample_lecture.audio_url = None
+    mock_lecture_crud.read.return_value = sample_lecture
+
+    await lecture_service.delete_lecture(sample_lecture.id, sample_user)
+
+    mock_lecture_crud.delete.assert_called_once_with(db_obj=sample_lecture)
+
+    mock_s3_service.delete.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_service_delete_lecture_access_denied(
+    lecture_service, mock_lecture_crud, sample_lecture
+):
+    """Проверяем, что чужой пользователь не может удалить лекцию."""
+    mock_lecture_crud.read.return_value = sample_lecture
+    another_user = User(id=uuid4(), username="hacker")
+
+    with pytest.raises(HTTPException) as exc:
+        await lecture_service.delete_lecture(sample_lecture.id, another_user)
+
+    assert exc.value.status_code == 403
+    mock_lecture_crud.delete.assert_not_called()
