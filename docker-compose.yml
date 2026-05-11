@@ -65,6 +65,7 @@ services:
       - NVIDIA_VISIBLE_DEVICES=all
       - PYTHONUNBUFFERED=1
       - LD_LIBRARY_PATH=/usr/local/lib/python3.10/dist-packages/nvidia/cudnn/lib/:$LD_LIBRARY_PATH
+      - OLLAMA_KEEP_ALIVE=1m
     networks:
       - coonspect-net
     volumes:
