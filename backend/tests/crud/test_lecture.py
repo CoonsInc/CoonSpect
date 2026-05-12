@@ -106,12 +106,11 @@ async def test_get_list_filter_by_user(
                 user_id=u1_id,
                 text="t1",
                 audio_url="lectures/test.mp3",
-                public=True,
             ),
             Lecture(
                 id=uuid4(),
                 name="U2 Lec",
-                user_id=u1_id,
+                user_id=u2_id,
                 text="t1",
                 audio_url="lectures/test.mp3",
             ),
@@ -125,9 +124,10 @@ async def test_get_list_filter_by_user(
         user_id=u2_id,
         sort_by=LectureSortBy.CREATED_AT,
         order=SortOrder.DESC,
+        requester_user_id=u2_id,
     )
     assert total == 1
-    assert items[0].name == "U1 Lec"
+    assert items[0].name == "U2 Lec"
 
 
 @pytest.mark.asyncio
@@ -291,3 +291,132 @@ async def test_get_list_search_by_name(
     )
     assert total_empty == 0
     assert len(items_empty) == 0
+
+
+@pytest.mark.asyncio
+async def test_get_list_owner_sees_private_lectures(
+    lecture_crud: LectureCRUD, db_session: AsyncSession
+) -> None:
+    """Проверка: владелец видит свои приватные лекции."""
+    user_id = uuid4()
+
+    db_session.add_all(
+        [
+            Lecture(
+                id=uuid4(),
+                name="Public",
+                user_id=user_id,
+                public=True,
+                text=".",
+                audio_url=".",
+            ),
+            Lecture(
+                id=uuid4(),
+                name="Private",
+                user_id=user_id,
+                public=False,
+                text=".",
+                audio_url=".",
+            ),
+        ]
+    )
+    await db_session.commit()
+
+    items, total, _ = await lecture_crud.get_list(
+        page=1,
+        limit=10,
+        sort_by=LectureSortBy.CREATED_AT,
+        order=SortOrder.DESC,
+        user_id=user_id,
+        requester_user_id=user_id,
+    )
+
+    assert total == 2
+    names = [item.name for item in items]
+    assert "Public" in names
+    assert "Private" in names
+
+
+@pytest.mark.asyncio
+async def test_get_list_stranger_cannot_see_private_lectures(
+    lecture_crud: LectureCRUD, db_session: AsyncSession
+) -> None:
+    """Проверка: посторонний пользователь видит только публичные лекции автора."""
+    owner_id = uuid4()
+    stranger_id = uuid4()
+
+    db_session.add_all(
+        [
+            Lecture(
+                id=uuid4(),
+                name="Public",
+                user_id=owner_id,
+                public=True,
+                text=".",
+                audio_url=".",
+            ),
+            Lecture(
+                id=uuid4(),
+                name="Private",
+                user_id=owner_id,
+                public=False,
+                text=".",
+                audio_url=".",
+            ),
+        ]
+    )
+    await db_session.commit()
+
+    items, total, _ = await lecture_crud.get_list(
+        page=1,
+        limit=10,
+        sort_by=LectureSortBy.CREATED_AT,
+        order=SortOrder.DESC,
+        user_id=owner_id,
+        requester_user_id=stranger_id,
+    )
+
+    assert total == 1
+    assert items[0].name == "Public"
+
+
+@pytest.mark.asyncio
+async def test_get_list_anonymous_cannot_see_private_lectures(
+    lecture_crud: LectureCRUD, db_session: AsyncSession
+) -> None:
+    """Проверка: аноним (requester_user_id=None) видит только публичные лекции."""
+    owner_id = uuid4()
+
+    db_session.add_all(
+        [
+            Lecture(
+                id=uuid4(),
+                name="Public",
+                user_id=owner_id,
+                public=True,
+                text=".",
+                audio_url=".",
+            ),
+            Lecture(
+                id=uuid4(),
+                name="Private",
+                user_id=owner_id,
+                public=False,
+                text=".",
+                audio_url=".",
+            ),
+        ]
+    )
+    await db_session.commit()
+
+    items, total, _ = await lecture_crud.get_list(
+        page=1,
+        limit=10,
+        sort_by=LectureSortBy.CREATED_AT,
+        order=SortOrder.DESC,
+        user_id=owner_id,
+        requester_user_id=None,
+    )
+
+    assert total == 1
+    assert items[0].name == "Public"

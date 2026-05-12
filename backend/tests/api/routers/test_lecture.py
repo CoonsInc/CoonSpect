@@ -45,7 +45,7 @@ async def test_get_lectures_list_pagination(
                 text="...",
                 user_id=sample_user.id,
                 audio_url="lectures/test.mp3",
-                public=True,  # Важно!
+                public=True,
             )
         )
     await db_session.commit()
@@ -226,4 +226,44 @@ async def test_get_lectures_list_privacy_filter(
     data = response.json()
     names = [item["name"] for item in data["items"]]
     assert "Public A" in names
-    assert "Private A" in names
+    assert "Private A" not in names
+
+
+@pytest.mark.asyncio
+async def test_get_lectures_list_privacy_filter_anonymous(
+    client: AsyncClient, db_session: AsyncSession, sample_user: User
+) -> None:
+    owner_id = sample_user.id
+
+    db_session.add_all(
+        [
+            Lecture(
+                id=uuid4(),
+                name="Public Lecture",
+                user_id=owner_id,
+                public=True,
+                text=".",
+                audio_url=".",
+            ),
+            Lecture(
+                id=uuid4(),
+                name="Private Lecture",
+                user_id=owner_id,
+                public=False,
+                text=".",
+                audio_url=".",
+            ),
+        ]
+    )
+    await db_session.commit()
+
+    response = await client.get(f"/lecture/list?user_id={owner_id}")
+
+    assert response.status_code == 200
+    data = response.json()
+
+    names = [item["name"] for item in data["items"]]
+
+    assert "Public Lecture" in names
+    assert "Private Lecture" not in names
+    assert data["total"] == 1

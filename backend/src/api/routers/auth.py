@@ -7,11 +7,7 @@ from src.settings import settings
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-COOKIE_PARAMS = {
-    "httponly": True,
-    "samesite": "lax",
-    "secure": False,  # В проде переключить в True
-}
+COOKIE_PARAMS = {"httponly": True, "samesite": "lax", "secure": False}
 
 
 def set_auth_cookies(response: Response, tokens: AuthTokens) -> None:

@@ -35,6 +35,7 @@ class LectureService:
         order: SortOrder,
         user_id: UUID | None,
         search_name: str | None = None,
+        requester_user_id: UUID | None = None,
     ) -> LecturesPage:
         if limit < 1:
             raise HTTPException(400, "Too low limit value")
@@ -46,6 +47,7 @@ class LectureService:
             order=order,
             user_id=user_id,
             search_name=search_name,
+            requester_user_id=requester_user_id,
         )
 
         return LecturesPage(
