@@ -1,16 +1,19 @@
+// pages/LectureRouterPage.tsx
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom'; 
 import { useTextStore, useAuthStore, useAppStore } from '../stores';
-import MainPage from './MainPage';
 import Header from '../components/organisms/Header';
 import Footer from '../components/organisms/Footer';
 import ViewLectureSection from '../components/organisms/ViewLectureSection';
+import EditorSection from '../components/organisms/EditorSection'; 
 import Spinner from '../components/atoms/Spinner';
 
 const LectureRouterPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { loadLecture, currentLecture, progressStatus, audioUrl, reset } = useTextStore();
+  const location = useLocation(); 
+  
+  const { loadLecture, currentLecture, progressStatus, audioUrl, reset, saveLectureChanges } = useTextStore(); 
   const { user } = useAuthStore();
   const { setAppState } = useAppStore();
   
@@ -37,6 +40,27 @@ const LectureRouterPage: React.FC = () => {
     };
   }, [id, loadLecture, setAppState, reset]);
 
+  // Функция для кнопки "Назад"
+  const handleBack = () => {
+    if (location.key !== 'default') {
+      navigate(-1);
+    } else {
+      navigate('/lectures');
+    }
+  };
+
+  // Функция сохранения для эдитора
+  const handleSave = async (newText: string, title: string) => {
+    try {
+      await saveLectureChanges(newText, title);
+      alert("Конспект успешно сохранён!");
+      reset();
+      navigate("/lectures");
+    } catch (e) {
+      alert("Ошибка при сохранении. Попробуйте еще раз.");
+    }
+  };
+
   if (isLoading || progressStatus === 'loading') {
     return (
       <div className="bg-[var(--color-bg-primary)] min-h-screen flex flex-col items-center justify-center">
@@ -58,22 +82,30 @@ const LectureRouterPage: React.FC = () => {
 
   const isOwner = user?.id === currentLecture.user.id;
 
-  if (isOwner) {
-    return <MainPage />;
-  } else {
-    return (
-      <div className="bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] min-h-screen font-sans overflow-x-hidden">
-        <Header /> 
-        <ViewLectureSection 
-          title={currentLecture.name || 'Без названия'} 
-          text={currentLecture.text || ''} 
-          audioUrl={audioUrl || undefined}
-          onBack={() => navigate(-1)} 
-        />
-        <Footer />
-      </div>
-    );
-  }
+  return (
+    <div className="bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] min-h-screen flex flex-col font-sans overflow-x-hidden">
+      <Header /> 
+      
+      <main className="flex-grow">
+        {isOwner ? (
+          <EditorSection 
+            initialText={currentLecture.text || ''} 
+            onSave={handleSave}
+            onBack={handleBack} 
+          />
+        ) : (
+          <ViewLectureSection 
+            title={currentLecture.name || 'Без названия'} 
+            text={currentLecture.text || ''} 
+            audioUrl={audioUrl || undefined}
+            onBack={handleBack} 
+          />
+        )}
+      </main>
+
+      <Footer />
+    </div>
+  );
 };
 
 export default LectureRouterPage;

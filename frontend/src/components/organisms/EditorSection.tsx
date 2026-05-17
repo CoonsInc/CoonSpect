@@ -11,11 +11,19 @@ import Text from "../atoms/Text";
 import { copyToClipboard, applyFormat } from "../../utils/mdUtils";
 import MarkdownViewer from "../../utils/MarkdownViewer";
 
+import pdfMake from "pdfmake/build/pdfmake";
+import pdfFonts from "pdfmake/build/vfs_fonts";
+
+(pdfMake as any).addVirtualFileSystem(pdfFonts);
+
+
 interface EditorSectionProps {
   initialText: string;
   onSave: (newText: string, title: string) => void;
   onBack?: () => void;
 }
+
+type DownloadFormat = "txt" | "md" | "docx" | "pdf";
 
 const EditorSection: React.FC<EditorSectionProps> = ({ 
   initialText,
@@ -27,12 +35,13 @@ const EditorSection: React.FC<EditorSectionProps> = ({
   const [text, setText] = useState(processedText || initialText);
   const [localTitle, setLocalTitle] = useState(storeTitle);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
+  
   const navigate = useNavigate();
   const [isDeleting, setIsDeleting] = useState(false); 
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+
 
   useEffect(() => {
     setText(processedText || initialText);
@@ -60,18 +69,100 @@ const EditorSection: React.FC<EditorSectionProps> = ({
     onSave(text, localTitle);
   };
 
-  const handleDownloadLocally = () => {
+  const convertMarkdownToHtml = (markdown: string): string => {
+    let html = markdown;
+    
+    html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+    html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+    html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+    html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+    html = html.replace(/^---$/gm, '<hr>');
+    html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
+    html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+    html = html.replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>');
+    html = html.replace(/^(?!<[hulb]|<\/?[hulb])(.+)$/gm, '<p>$1</p>');
+    
+    return html;
+  };
+
+  const handleDownloadLocally = (format: DownloadFormat) => {
     if (!localTitle.trim()) {
       alert("Пожалуйста, введите название лекции перед скачиванием.");
       return;
     }
-    
-    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+
+    const safeTitle = localTitle.replace(/\s+/g, '_');
+    let content = "";
+    let fileName = "";
+    let mimeType = "";
+
+    switch (format) {
+      case "txt":
+        content = text;
+        fileName = `${safeTitle}.txt`;
+        mimeType = "text/plain;charset=utf-8";
+        break;
+
+      case "md":
+        content = text;
+        fileName = `${safeTitle}.md`;
+        mimeType = "text/markdown;charset=utf-8";
+        break;
+
+      case "docx": {
+        const docxHtml = convertMarkdownToHtml(text);
+        content = `
+  <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word">
+  <head><meta charset="UTF-8"><title>${localTitle}</title></head>
+  <body><h1>${localTitle}</h1>${docxHtml}</body></html>`;
+        fileName = `${safeTitle}.doc`;
+        mimeType = "application/msword";
+        break;
+      }
+
+      case "pdf": {
+  const lines = text.split('\n');
+  const content: any[] = [];
+  
+  lines.forEach((line) => {
+    if (line.trim() === '') {
+      content.push({ text: '', margin: [0, 5] });
+    } else if (line.startsWith('# ')) {
+      content.push({ text: line.substring(2), bold: true, fontSize: 16, margin: [0, 10, 0, 5] });
+    } else if (line.startsWith('## ')) {
+      content.push({ text: line.substring(3), bold: true, fontSize: 14, margin: [0, 8, 0, 4] });
+    } else if (line.startsWith('### ')) {
+      content.push({ text: line.substring(4), bold: true, fontSize: 12, margin: [0, 6, 0, 3] });
+    } else {
+      content.push({ text: line, fontSize: 11, margin: [0, 2] });
+    }
+  });
+
+  const docDefinition = {
+    content: [
+      { text: localTitle, fontSize: 20, bold: true, margin: [0, 0, 0, 15], alignment: 'center' },
+      ...content
+    ]
+  };
+
+  pdfMake.createPdf(docDefinition).download(`${safeTitle}.pdf`);
+  return;
+}
+      default:
+        content = text;
+        fileName = `${safeTitle}.txt`;
+        mimeType = "text/plain;charset=utf-8";
+    }
+
+    const blob = new Blob([content], { type: mimeType });
     const url = URL.createObjectURL(blob);
     
     const link = document.createElement("a");
     link.href = url;
-    link.download = `${localTitle.replace(/\s+/g, '_')}.txt`; 
+    link.download = fileName;
     document.body.appendChild(link);
     link.click();
     
@@ -146,8 +237,6 @@ const EditorSection: React.FC<EditorSectionProps> = ({
   return (
     <section className="min-h-screen py-20 px-8 bg-[var(--color-bg-primary)] relative overflow-hidden">
       <div className="w-full max-w-5xl mx-auto">
-        
-        {/* Хедер: Назад и Заголовок*/}
         <div className="flex flex-row items-end gap-6 sm:gap-10 mb-54 min-h-[44px]">
           {onBack && (
             <Button onClick={onBack} variant="secondary" className="flex items-center gap-2 shrink-0">
@@ -164,7 +253,6 @@ const EditorSection: React.FC<EditorSectionProps> = ({
           </Heading>
         </div>
 
-        {/* Кнопка поиска по аудио*/}
         <div className="mb-50 flex justify-end">
           <Button 
             onClick={() => setIsSearchOpen(true)} 
@@ -177,8 +265,6 @@ const EditorSection: React.FC<EditorSectionProps> = ({
           </Button>
         </div>
 
-        {/* Поле названия */}
-        <div className="mb-6 flex flex-col gap-2">
         <div className="mb-6 flex flex-col gap-2">
           <label className="text-sm font-medium text-[var(--color-text-secondary)] ml-1">
             Название лекции
@@ -196,9 +282,7 @@ const EditorSection: React.FC<EditorSectionProps> = ({
             />
           </div>
         </div>
-        </div>
 
-        {/* Тулбар */}
         <div className="mb-8">
           <EditorToolbar 
             onFormat={handleFormat}
@@ -210,7 +294,6 @@ const EditorSection: React.FC<EditorSectionProps> = ({
           />
         </div>
 
-        {/* Зона редактора и предпросмотра */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="flex flex-col">
             <div className="h-[450px] bg-[var(--color-bg-accent)] rounded-lg border border-[var(--color-border)] overflow-hidden relative">
@@ -223,9 +306,9 @@ const EditorSection: React.FC<EditorSectionProps> = ({
                 placeholder="Введите текст здесь..."
               />
               {isSaving && (
-                 <div className="absolute inset-0 bg-black/10 flex items-center justify-center z-10">
-                    <span className="text-sm font-medium">Сохранение...</span>
-                 </div>
+                <div className="absolute inset-0 bg-black/10 flex items-center justify-center z-10">
+                  <span className="text-sm font-medium">Сохранение...</span>
+                </div>
               )}
             </div>
           </div>
@@ -237,11 +320,10 @@ const EditorSection: React.FC<EditorSectionProps> = ({
           </div>    
         </div>    
 
-        {/* Аудиоплеер */}
         {audioUrl && (
           <div className="mt-8 max-w-xl mx-auto p-5 bg-[var(--color-bg-accent)] rounded-xl border border-[var(--color-border)] shadow-sm">
             <Heading level={3} className="text-[var(--color-text-purple)] mb-3 text-base flex items-center gap-2">
-               🎵 {audioFile?.name || 'Аудиофайл'}
+              🎵 {audioFile?.name || 'Аудиофайл'}
             </Heading>
             <audio ref={audioRef} controls src={audioUrl} className="w-full rounded-lg">
               Ваш браузер не поддерживает воспроизведение аудио.

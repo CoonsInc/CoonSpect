@@ -55,7 +55,11 @@ const LecturesCatalog: React.FC<LecturesCatalogProps> = ({
     loadLectures(params);
   }, [sortBy, order, scope, user?.id, loadLectures]);
 
-  const handleOpenLecture = (id: string) => navigate(`/lec/${id}`);
+  const handleOpenLecture = (id: string) => {
+    navigate(`/lec/${id}`, { 
+      state: { from: scope === 'my' ? '/my-lectures' : '/lectures' } 
+    });
+  };
 
   const handleSortByChange = (newSort: typeof sortBy) => {
     setSortBy(newSort);
