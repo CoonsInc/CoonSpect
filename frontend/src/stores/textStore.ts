@@ -2,8 +2,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Lecture } from '../types/lecture.ts';
-import { startAndTrackLectureTask, getLectureResult,  } from '../api/generateApi';
-import { getLectureAudioLink, editLecture, deleteLecture } from '../api/lecturesApi'
+import { startAndTrackLectureTask, getLectureResult } from '../api/generateApi';
+import { getLectureAudioLink, editLecture, deleteLecture } from '../api/lecturesApi';
 
 interface AudioState {
   audioFile: File | null;
@@ -28,6 +28,7 @@ interface AudioState {
   generateTranscript: (file: File) => Promise<void>;
   loadLecture: (id: string) => Promise<void>;
   saveLectureChanges: (text: string, title: string) => Promise<void>;
+  toggleLecturePrivacy: () => Promise<void>;
 }
 
 export const useTextStore = create<AudioState>()(
@@ -107,7 +108,6 @@ export const useTextStore = create<AudioState>()(
         const id = get().activeLectureId;
         const currentAudio = get().audioUrl;
 
-        // Если нет ID или аудио уже загружено локально (файл пользователя) - ничего не делаем
         if (!id || (currentAudio && currentAudio.startsWith('blob:'))) return;
 
         try {
@@ -127,7 +127,6 @@ export const useTextStore = create<AudioState>()(
             try {
               if (link.startsWith('http')) {
                 const urlObj = new URL(link);
-
                 link = urlObj.pathname + urlObj.search; 
               }
             } catch (e) {
@@ -145,40 +144,35 @@ export const useTextStore = create<AudioState>()(
       },
 
       loadLecture: async (id: string) => {
-        const savedId = get().activeLectureId;
-        const savedText = get().processedText;
-        const savedTitle = get().lectureTitle;
-
-        set({ isSaving: true, progressStatus: 'loading' });
+        // Устанавливаем статус загрузки, если это необходимо
+        set({ progressStatus: 'loading' }); 
+        
         try {
-          const lecture = await getLectureResult(id);
-
-          let finalAudioUrl = lecture.audio_url || null;
+          // 1. Получаем текстовую часть лекции с бэкенда
+          const data = await getLectureResult(id);
           
-          if (finalAudioUrl && finalAudioUrl.startsWith('http')) {
-            try {
-              const urlObj = new URL(finalAudioUrl);
-              finalAudioUrl = urlObj.pathname + urlObj.search; 
-            } catch (e) {
-              console.warn('Не удалось распарсить URL', e);
-            }
-          }
-
-          const isSameLecture = savedId === id;
-
+          // 2. Обязательно сначала обновляем стейт лекции и ID!
+          // Метод restoreAudio() будет брать id именно из get().activeLectureId
           set({
-            activeLectureId: lecture.id,
-            currentLecture: lecture,
-            audioUrl: finalAudioUrl, 
-            progressStatus: 'finish',
-            lectureTitle: (isSameLecture && savedTitle) ? savedTitle : (lecture.name || ''),
-            processedText: (isSameLecture && savedText) ? savedText : (lecture.text || lecture.transcription || '')
+            currentLecture: data,
+            activeLectureId: id,
+            processedText: data.text || '',
+            lectureTitle: data.name || '',
+            progressStatus: 'success', // или то значение, которое у тебя было по дефолту
           });
+
+          console.log(`[STORE] Lecture text loaded. Now restoring audio for: ${id}`);
+
+          // 3. Инкапсулированный вызов подгрузки аудио
+          // Используем await, чтобы дождаться ответа от сервера перед завершением loadLecture
+          await get().restoreAudio();
+
+          console.log(`[STORE] Audio link successfully restored.`);
+
         } catch (e) {
-          console.error('[FRONT] Failed to load lecture:', e);
+          console.error('[FRONT] Error inside loadLecture:', e);
           set({ progressStatus: 'error' });
-        } finally {
-          set({ isSaving: false });
+          throw e; // Пробрасываем ошибку дальше, чтобы компонент (роутер) её поймал
         }
       },
 
@@ -215,6 +209,30 @@ export const useTextStore = create<AudioState>()(
           set({ processedText: text, lectureTitle: title });
         } catch (e) {
           console.error('[FRONT] Failed to save lecture:', e);
+          throw e;
+        } finally {
+          set({ isSaving: false });
+        }
+      },
+
+      toggleLecturePrivacy: async () => {
+        const id = get().activeLectureId;
+        const current = get().currentLecture;
+        if (!id || !current) throw new Error("Нет активной лекции");
+
+        set({ isSaving: true });
+        try {
+          const nextPublicState = !current.public;
+          const updatedLecture = await editLecture(id, { public: nextPublicState });
+          
+          set({ 
+            currentLecture: { 
+              ...current, 
+              public: updatedLecture.public ?? nextPublicState 
+            } 
+          });
+        } catch (e) {
+          console.error('[FRONT] Failed to toggle lecture privacy:', e);
           throw e;
         } finally {
           set({ isSaving: false });

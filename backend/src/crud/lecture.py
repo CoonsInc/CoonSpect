@@ -27,10 +27,10 @@ class LectureCRUD(BaseCRUD[Lecture]):
         requester_user_id: UUID | None = None,
     ) -> tuple[list[Lecture], int, int]:
         if user_id is not None:
-            filters = [
-                or_(Lecture.public.is_(True), Lecture.user_id == requester_user_id),
-                Lecture.user_id == user_id,
-            ]
+            if requester_user_id == user_id:
+                filters = [Lecture.user_id == user_id]
+            else:
+                filters = [Lecture.user_id == user_id, Lecture.public.is_(True)]
         else:
             filters = [Lecture.public.is_(True)]
 

@@ -40,18 +40,20 @@ interface CatalogState {
   total: number;
   currentPage: number;
   totalPages: number;
-  
-  isLoading: boolean;
-  error: string | null;
-
   page: number;
   sortBy: SortByOption;
   order: OrderOption;
+  searchName: string;
+  isLoading: boolean;
+  error: string | null;
+  scope: 'all' | 'my'; 
 
-  fetchLectures: (params?: GetLecturesParams) => Promise<void>;
+  fetchLectures: (contextParams?: GetLecturesParams) => Promise<void>;
   setPage: (page: number) => void;
   setSortBy: (sortBy: SortByOption) => void;
   toggleOrder: () => void;
+  setSearchName: (name: string) => void;
+  setScope: (scope: 'all' | 'my') => void;
 }
 
 export const useCatalogStore = create<CatalogState>()((set, get) => ({
@@ -59,21 +61,26 @@ export const useCatalogStore = create<CatalogState>()((set, get) => ({
   total: 0,
   currentPage: 1,
   totalPages: 1,
-  isLoading: false,
-  error: null,
-  
   page: 1,
   sortBy: getStored<SortByOption>(STORAGE_KEYS.SORT_BY, 'created_at'),
   order: getStored<OrderOption>(STORAGE_KEYS.ORDER, 'desc'),
+  searchName: '',
+  isLoading: false,
+  error: null,
+  scope: 'all',
+
+  setScope: (scope) => set({ scope }), 
 
   fetchLectures: async (contextParams) => {
     const state = get();
     
-    const requestParams: GetLecturesParams = {
+    const requestParams = {
       ...DEFAULT_PARAMS,
       page: contextParams?.page ?? state.page,
       sort_by: state.sortBy,
       order: state.order,
+      search_name: state.searchName || undefined,
+      scope: state.scope,
       ...contextParams, 
     };
 
@@ -105,12 +112,16 @@ export const useCatalogStore = create<CatalogState>()((set, get) => ({
 
   setSortBy: (sortBy) => {
     setStored(STORAGE_KEYS.SORT_BY, sortBy);
-    set({ sortBy, page: 1 });
+    set({ sortBy });
   },
 
   toggleOrder: () => {
-    const newOrder = get().order === 'asc' ? 'desc' : 'asc';
-    setStored(STORAGE_KEYS.ORDER, newOrder);
-    set({ order: newOrder, page: 1 });
+    const nextOrder = get().order === 'asc' ? 'desc' : 'asc';
+    setStored(STORAGE_KEYS.ORDER, nextOrder);
+    set({ order: nextOrder });
   },
+
+  setSearchName: (searchName) => {
+    set({ searchName });
+  }
 }));

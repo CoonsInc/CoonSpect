@@ -3,7 +3,12 @@ import type { GetLecturesParams, LectureUpdate, LecturesPage, Lecture } from '..
 
 export async function getLecturesList(params: GetLecturesParams = {}): Promise<LecturesPage> {
     console.log(`[FRONT] Fetching lectures list`, params);
-    const response = await apiClient.get('/lecture/list', { params });
+    
+    const { scope, ...restParams } = params;
+    
+    const endpoint = scope === 'my' ? '/user/lectures' : '/lecture/list';
+    
+    const response = await apiClient.get(endpoint, { params: restParams });
     return response.data;
 }
 

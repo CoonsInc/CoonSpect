@@ -30,7 +30,19 @@ const EditorSection: React.FC<EditorSectionProps> = ({
   onSave,
   onBack
 }) => {
-  const { processedText, setProcessedText, setLectureTitle, deleteCurrentLecture, lectureTitle: storeTitle, audioUrl, audioFile, isSaving, activeLectureId } = useTextStore();
+  const { 
+    processedText, 
+    setProcessedText, 
+    setLectureTitle, 
+    deleteCurrentLecture, 
+    lectureTitle: storeTitle, 
+    audioUrl, 
+    audioFile, 
+    isSaving, 
+    activeLectureId,
+    currentLecture,    
+    toggleLecturePrivacy
+  } = useTextStore();
   
   const [text, setText] = useState(processedText || initialText);
   const [localTitle, setLocalTitle] = useState(storeTitle);
@@ -269,7 +281,7 @@ const EditorSection: React.FC<EditorSectionProps> = ({
           <label className="text-sm font-medium text-[var(--color-text-secondary)] ml-1">
             Название лекции
           </label>
-          <div className="relative flex items-center">
+          <div className="relative flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <input
               type="text"
               value={localTitle}
@@ -280,6 +292,28 @@ const EditorSection: React.FC<EditorSectionProps> = ({
               placeholder="Например: Введение в нейронные сети"
               className="w-full bg-[var(--color-bg-accent)] text-[var(--color-text-primary)] px-4 py-3 rounded-lg border border-[var(--color-border)] outline-none focus:border-[var(--color-text-purple)] transition-all"
             />
+            
+            {/* Кнопка изменения приватности (доступна, только если лекция сохранена на бэке) */}
+            {activeLectureId && (
+              <Button
+                onClick={async () => {
+                  try {
+                    await toggleLecturePrivacy();
+                  } catch (err) {
+                    alert("Не удалось изменить статус приватности лекции.");
+                  }
+                }}
+                variant={currentLecture?.public ? "primary" : "secondary"}
+                disabled={isSaving}
+                className="flex items-center justify-center gap-2 px-5 py-3 whitespace-nowrap shrink-0 sm:w-auto"
+                title={currentLecture?.public ? "Конспект виден всем в каталоге" : "Конспект видите только вы"}
+              >
+                <Icon name={currentLecture?.public ? "Globe" : "Lock"} className="w-4 h-4" />
+                <span>
+                  {currentLecture?.public ? "Публичная" : "Приватная"}
+                </span>
+              </Button>
+            )}
           </div>
         </div>
 
