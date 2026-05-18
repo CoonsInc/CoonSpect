@@ -19,9 +19,7 @@ async def transcribe_audio(
 ):
     if os.path.splitext(content.filename.lower())[1] not in settings.ALLOWED_EXTENSIONS:
         raise HTTPException(400, "Неподдерживаемый формат файла.")
-        
-    #в идеале проврека на размер но мне лень
-    
+            
     file_type = "audio" if os.path.splitext(content.filename.lower())[1] in settings.ALLOWED_AUDIO_EXTENSIONS else "video"
     
     tmp_file_path = await download_from_s3(s3_client, content.bucket, content.filename)

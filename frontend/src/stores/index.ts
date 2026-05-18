@@ -1,4 +1,5 @@
-// stores/index.ts - Multiple exports for stores
+// stores/index.ts
 export { useTextStore } from './textStore';
 export { useAuthStore } from './authStore';
 export { useAppStore } from './appStore';
+export { useCatalogStore } from './catalogStore';

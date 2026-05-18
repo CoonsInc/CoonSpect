@@ -2,7 +2,9 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { authApi } from '../api/authApi';
-import type { User } from '../api/authApi';
+import type { User } from '../types/users';
+
+import { useTextStore } from './textStore';
 
 interface AuthState {
   user: User | null;
@@ -29,9 +31,12 @@ export const useAuthStore = create<AuthState>()(
           const currentUser = await authApi.getCurrentUser();
           if (currentUser) {
             set({ user: currentUser });
-            console.log('✅ Пользователь авторизован:', currentUser.username);
+            console.log('Пользователь авторизован:', currentUser.username);
+            localStorage.removeItem('username');
+            localStorage.removeItem('password');
+            localStorage.removeItem('isRegister');
           } else {
-            console.log('⚠️ Пользователь не авторизован');
+            console.log('Пользователь не авторизован');
             set({ user: null });
           }
         } catch (error) {
@@ -56,7 +61,12 @@ export const useAuthStore = create<AuthState>()(
         try {
           await authApi.register({ username, password });
           const user = await authApi.getCurrentUser();
-          if (user) set({ user });
+          if (user) {
+            set({ user });
+            localStorage.removeItem('username');
+            localStorage.removeItem('password');
+            localStorage.removeItem('isRegister');
+          }
         } catch (error) {
           console.error('Ошибка регистрации', error);
           throw error;
@@ -69,9 +79,22 @@ export const useAuthStore = create<AuthState>()(
         } catch (e) {
           console.warn('Ошибка на сервере при выходе, но очищаем локально', e);
         } finally {
+         
           set({ user: null });
+          useTextStore.getState().reset();
+          
+          useAuthStore.persist.clearStorage();
+          useTextStore.persist.clearStorage();
+
+          localStorage.removeItem('app-storage');
+          localStorage.removeItem('auth-storage');
+          localStorage.removeItem('audio-storage');
+
+          window.location.href = '/login'; 
         }
       },
+
+
     }),
     {
       name: 'auth-storage',

@@ -1,6 +1,7 @@
 import ollama
 import os
 from typing import Dict, Any
+from qdrant_client import QdrantClient
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 class LLMEngine:
@@ -8,6 +9,9 @@ class LLMEngine:
         host = os.getenv("OLLAMA_HOST", "http://localhost:11434")
         self.client = ollama.AsyncClient(host=host)
         self.prompt_tmp = self.load_prompt()
+        
+        qdrant_host = "qdrant"
+        self.qdrant = QdrantClient(host=qdrant_host, port=6333)
         
         self.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=8000,
@@ -35,9 +39,55 @@ class LLMEngine:
             chunks = self.text_splitter.split_text(text)
             full_summary = []
             context_summary = ""
+            used_sources = set()
             
             for i, chunk in enumerate(chunks):
                 progress_info = f"ЧАСТЬ {i+1} ИЗ {len(chunks)}."
+                
+                context_text = ""
+                try:
+                    if self.qdrant.collection_exists("coon_knowledge_base"):
+                        embed_response = await self.client.embeddings(
+                            model="nomic-embed-text", 
+                            prompt=chunk[:1500]
+                        )
+
+                        embedding = embed_response["embedding"]
+
+                        search_response = self.qdrant.query_points(
+                            collection_name="coon_knowledge_base",
+                            query=embedding,
+                            limit=3
+                        )
+
+                        context_parts = []
+                        score_threshold = 0.91
+
+                        for hit in search_response.points:
+                            if hit.score < score_threshold:
+                                print(f"[RAG] Пропущен кусок с низким score: {hit.score:.3f}")
+                                continue
+                            
+                            payload = hit.payload or {}
+                            chunk_text = payload.get("page_content", "")
+                            meta = payload.get("metadata", {})
+                            
+                            book_title = meta.get("book_title", "Неизвестный источник")
+                            page = meta.get("page", "?")
+                            
+                            source_info = f"{book_title} (стр. {page})"
+                            used_sources.add(source_info)
+                            
+                            rag_chunk = f"--- Источник: {source_info} (score: {hit.score:.2f}) ---\n{chunk_text}"
+                            print(rag_chunk)
+                            context_parts.append(rag_chunk)
+
+                        if context_parts:
+                            context_text = "Дополнительная информация из базы знаний:\n" + "\n\n".join(context_parts) + "\n\n"
+                        else:
+                            print(f"[RAG] Для части {i+1} релевантных данных не найдено.")
+                except Exception as rag_e:
+                    print(f"[RAG Warning] Ошибка поиска контекста: {rag_e}")
                 
                 context_instruction = ""
                 if context_summary:
@@ -46,7 +96,7 @@ class LLMEngine:
                         f"но НЕ повторяй в текущем конспекте):\n{context_summary}\n\nПродолжай конспектировать."
                     )
                 
-                prompt = f"{self.prompt_tmp}\n{context_instruction}\n{progress_info}\nТЕКСТ ЛЕКЦИИ:\n{chunk}"
+                prompt = f"{self.prompt_tmp}\n{context_instruction}\n{context_text}\n{progress_info}\nТЕКСТ ЛЕКЦИИ:\n{chunk}"
                 
                 response = await self.client.generate(
                     model=model,
@@ -61,7 +111,7 @@ class LLMEngine:
             return {
                 "summary": "\n\n---\n\n".join(full_summary),
                 "success": True,
-                "chunks_processed": len(chunks)
+                "chunks_processed": len(chunks),
             }
             
         except Exception as e:

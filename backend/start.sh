@@ -1,4 +1,2 @@
-#!/bin/sh
-alembic upgrade head
-celery -A src.app.celery_app worker --loglevel=info &
-uvicorn src.app.main:app --host 0.0.0.0 --port 8000
+uv run --no-dev taskiq worker src.infra.taskiq:broker &
+uv run --no-dev fastapi run src/main.py

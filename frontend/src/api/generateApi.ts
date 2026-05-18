@@ -1,75 +1,97 @@
 import { apiClient, WS_BASE_URL } from './index';
 
-// const isUUID = (value: string) =>
-//     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-
 export async function startAndTrackLectureTask(
-  file: File,
-  onStatusChange?: (status: string) => void
+    file: File,
+    onStatusChange?: (status: string) => void
 ): Promise<{ lectureId: string }> {
   
-  console.log(`[FRONT] Starting upload for task ${file.name}`);
-  const formData = new FormData();
-  formData.append('file', file);
+    console.log(`[FRONT] Requesting upload URL for task ${file.name}`);
+    
+    const res = await apiClient.post(`/task/start`, { 
+        filename: file.name 
+    });
 
-  const res = await apiClient.post(`/task/start`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  });
+    const { upload_url } = res.data;
 
-  if (res.data.status?.toLowerCase() !== 'success') {
-    throw new Error(res.data.msg || "Error start task");
-  }
+    if (!upload_url) {
+        throw new Error("Не удалось получить URL для загрузки файла");
+    }
 
-  console.log(`[FRONT] Task started successfully on backend`);
+    let finalUploadUrl = upload_url;
+    try {
+        if (finalUploadUrl.startsWith('http')) {
+            const urlObj = new URL(finalUploadUrl);
+            finalUploadUrl = urlObj.pathname + urlObj.search;
+        }
+    } catch (e) {
+        console.warn('Не удалось распарсить upload URL', e);
+    }
 
-  return new Promise((resolve, reject) => {
-    const ws = new WebSocket(`${WS_BASE_URL}/task/ws`);
+    console.log(`[FRONT] Task initialized, starting direct S3 upload...`);
+    onStatusChange?.("Загрузка файла на сервер...");
 
-    let isFinished = false;
-    let isError = false;
+    try {
+        const uploadRes = await fetch(finalUploadUrl, {
+            method: 'PUT',
+            body: file,
+            headers: {
+                'Content-Type': 'audio/mpeg' 
+            }
+        });
 
-    ws.onopen = () => {
-      console.log(`[FRONT] WS open`);
-    };
+        if (!uploadRes.ok) {
+            throw new Error(`Ошибка загрузки в S3: ${uploadRes.status} ${uploadRes.statusText}`);
+        }
 
-    ws.onmessage = (event) => {
-      const msg = String(event.data);
-      console.log('[WS message]', msg);
+        await apiClient.post(`/task/confirm`);
 
-      if (isFinished) {
-        ws.close();
-        resolve({ lectureId: msg });
-        return;
-      }
+    } catch (err) {
+        console.error(`[FRONT] S3 Upload failed:`, err);
+        throw err;
+    }
 
-      if (isError) {
-        ws.close();
-        reject(new Error(msg));
-        return;
-      }
+    console.log(`[FRONT] File uploaded to S3 successfully. Connecting to WS...`);
+    onStatusChange?.("Файл загружен. Ожидание обработки...");
 
-      if (msg === "finish") {
-        isFinished = true;
-      } else if (msg === "error") {
-        isError = true;
-      } else {
-        onStatusChange?.(msg);
-      }
-    };
+    return new Promise((resolve, reject) => {
+        const ws = new WebSocket(`${WS_BASE_URL}/task/ws`);
 
-    ws.onerror = (e) => {
-      console.error(`[FRONT] WS Error`, e);
-      ws.close();
-      reject(e);
-    };
+        ws.onopen = () => console.log(`[FRONT] WS open`);
 
-    ws.onclose = () => console.log(`[FRONT] WS closed`);
-  });
+        ws.onmessage = (event) => {
+            try {
+                const { status, data } = JSON.parse(event.data);
+                console.log('[WS message parsed]', { status, data });
+
+                if (status === "finish") {
+                    ws.close();
+                    resolve({ lectureId: String(data) }); 
+                } 
+                else if (status === "error") {
+                    ws.close();
+                    reject(new Error(String(data || "Произошла ошибка при обработке")));
+                } 
+                else {
+                    onStatusChange?.(String(status));
+                }
+            } catch (err) {
+                console.error(`[FRONT] Failed to parse WS message:`, event.data);
+            }
+        };
+
+        ws.onerror = (e) => {
+            console.error(`[FRONT] WS Error`, e);
+            ws.close();
+            reject(e);
+        };
+
+        ws.onclose = () => console.log(`[FRONT] WS closed`);
+    });
 }
 
 export async function getLectureResult(lectureId: string) {
-  console.log(`[FRONT] Requesting result for lecture ${lectureId}`);
-  const res = await apiClient.get(`/lectures/${lectureId}`);
-  console.log(`[FRONT] Result received for lecture ${lectureId}`);
-  return res.data;
+    console.log(`[FRONT] Requesting result for lecture ${lectureId}`);
+    const res = await apiClient.get(`/lecture/${lectureId}`);
+    console.log(`[FRONT] Result received for lecture ${lectureId}`);
+    return res.data;
 }
