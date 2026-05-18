@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends
 
 from src.api.schemas.lecture import LectureRead, LecturesPage, LectureUpdate
 from src.api.schemas.status import Status
+from src.common.sorting import LectureSortBy, SortOrder
 from src.infra.db.models.user import User
 from src.services.auth import authenticate
 from src.services.lecture import LectureService, get_lecture_service
@@ -15,13 +16,19 @@ router = APIRouter(prefix="/lecture", tags=["lecture"])
 async def get_list(
     page: int = 1,
     limit: int = 20,
-    sort_by: str = "created_at",
-    order: str = "desc",
+    sort_by: LectureSortBy = LectureSortBy.CREATED_AT,
+    order: SortOrder = SortOrder.DESC,
     user_id: UUID | None = None,
+    search_name: str | None = None,
     service: LectureService = Depends(get_lecture_service),
 ):
     return await service.get_lectures_page(
-        page=page, limit=limit, sort_by=sort_by, order=order, user_id=user_id
+        page=page,
+        limit=limit,
+        sort_by=sort_by,
+        order=order,
+        user_id=user_id,
+        search_name=search_name,
     )
 
 

@@ -5,6 +5,7 @@ from fastapi import Depends, HTTPException
 from loguru import logger
 
 from src.api.schemas.lecture import LectureRead, LecturesPage, LectureUpdate
+from src.common.sorting import LectureSortBy, SortOrder
 from src.crud.lecture import LectureCRUD, get_lecture_crud
 from src.infra.db.models.user import User
 from src.services.s3 import S3Service, get_s3_service
@@ -24,20 +25,29 @@ class LectureService:
             logger.error(f"Invalid audio_url format: {audio_url}")
             raise HTTPException(500, "Internal error: invalid audio storage format")
 
-        return parts[0], parts[1]  # bucket, filename
+        return parts[0], parts[1]
 
     async def get_lectures_page(
-        self, page: int, limit: int, sort_by: str, order: str, user_id: UUID | None
+        self,
+        page: int,
+        limit: int,
+        sort_by: LectureSortBy,
+        order: SortOrder,
+        user_id: UUID | None,
+        search_name: str | None = None,
+        requester_user_id: UUID | None = None,
     ) -> LecturesPage:
         if limit < 1:
             raise HTTPException(400, "Too low limit value")
 
-        allowed_fields = {"name", "created_at", "updated_at"}
-        if sort_by not in allowed_fields:
-            raise HTTPException(400, "Invalid sort field")
-
         items, total, pages = await self.lecture_crud.get_list(
-            page=page, limit=limit, sort_by=sort_by, order=order, user_id=user_id
+            page=page,
+            limit=limit,
+            sort_by=sort_by,
+            order=order,
+            user_id=user_id,
+            search_name=search_name,
+            requester_user_id=requester_user_id,
         )
 
         return LecturesPage(

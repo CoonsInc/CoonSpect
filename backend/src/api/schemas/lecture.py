@@ -6,14 +6,6 @@ from pydantic import BaseModel, ConfigDict
 from src.api.schemas.user import UserRead
 
 
-class LectureCreate(BaseModel):
-    user_id: UUID
-    name: str = "Мой новый конспект"
-    lecturer: str = "Неизвестно"
-    audio_url: str | None
-    text: str = ""
-
-
 class LectureRead(BaseModel):
     id: UUID
     user: UserRead
@@ -21,6 +13,7 @@ class LectureRead(BaseModel):
     lecturer: str
     audio_url: str | None
     text: str
+    public: bool
     created_at: datetime
     updated_at: datetime
 
@@ -38,3 +31,4 @@ class LectureUpdate(BaseModel):
     name: str | None = None
     lecturer: str | None = None
     text: str | None = None
+    public: bool | None = None

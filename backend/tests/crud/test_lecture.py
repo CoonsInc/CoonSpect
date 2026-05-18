@@ -3,6 +3,7 @@ from uuid import UUID, uuid4
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.common.sorting import LectureSortBy, SortOrder
 from src.crud.lecture import LectureCRUD
 from src.infra.db.models.lecture import Lecture
 from src.infra.db.models.user import User
@@ -19,22 +20,33 @@ async def test_get_list_pagination_logic(
 ) -> None:
     lectures: list[Lecture] = [
         Lecture(
-            id=uuid4(), name=f"Lec {i}", user_id=sample_user.id, text=f"Content {i}"
+            id=uuid4(),
+            name=f"Lec {i}",
+            user_id=sample_user.id,
+            text=f"Content {i}",
+            audio_url="bucket/audio",
+            public=True,
         )
         for i in range(5)
     ]
     db_session.add_all(lectures)
     await db_session.commit()
 
-    items, total, pages = await lecture_crud.get_list(page=1, limit=2)
+    items, total, pages = await lecture_crud.get_list(
+        page=1, limit=2, sort_by=LectureSortBy.CREATED_AT, order=SortOrder.DESC
+    )
     assert total == 5
     assert pages == 3
     assert len(items) == 2
 
-    items, total, pages = await lecture_crud.get_list(page=3, limit=2)
+    items, total, pages = await lecture_crud.get_list(
+        page=3, limit=2, sort_by=LectureSortBy.CREATED_AT, order=SortOrder.DESC
+    )
     assert len(items) == 1
 
-    items, total, pages = await lecture_crud.get_list(page=99, limit=2)
+    items, total, pages = await lecture_crud.get_list(
+        page=99, limit=2, sort_by=LectureSortBy.CREATED_AT, order=SortOrder.DESC
+    )
     assert items == []
 
 
@@ -42,15 +54,33 @@ async def test_get_list_pagination_logic(
 async def test_get_list_sorting(
     lecture_crud: LectureCRUD, sample_user: User, db_session: AsyncSession
 ) -> None:
-    l1 = Lecture(id=uuid4(), name="AAA", user_id=sample_user.id, text="some text")
-    l2 = Lecture(id=uuid4(), name="ZZZ", user_id=sample_user.id, text="other text")
+    l1 = Lecture(
+        id=uuid4(),
+        name="AAA",
+        user_id=sample_user.id,
+        text="some text",
+        audio_url="lectures/test.mp3",
+        public=True,
+    )
+    l2 = Lecture(
+        id=uuid4(),
+        name="ZZZ",
+        user_id=sample_user.id,
+        text="other text",
+        audio_url="lectures/test.mp3",
+        public=True,
+    )
     db_session.add_all([l1, l2])
     await db_session.commit()
 
-    items, _, _ = await lecture_crud.get_list(sort_by="name", order="asc")
+    items, _, _ = await lecture_crud.get_list(
+        page=1, limit=20, sort_by=LectureSortBy.NAME, order=SortOrder.ASC
+    )
     assert items[0].name == "AAA"
 
-    items, _, _ = await lecture_crud.get_list(sort_by="name", order="desc")
+    items, _, _ = await lecture_crud.get_list(
+        page=1, limit=20, sort_by=LectureSortBy.NAME, order=SortOrder.DESC
+    )
     assert items[0].name == "ZZZ"
 
 
@@ -68,13 +98,36 @@ async def test_get_list_filter_by_user(
         ]
     )
 
-    db_session.add(Lecture(id=uuid4(), name="U1 Lec", user_id=u1_id, text="t1"))
-    db_session.add(Lecture(id=uuid4(), name="U2 Lec", user_id=u2_id, text="t2"))
+    db_session.add_all(
+        [
+            Lecture(
+                id=uuid4(),
+                name="U1 Lec",
+                user_id=u1_id,
+                text="t1",
+                audio_url="lectures/test.mp3",
+            ),
+            Lecture(
+                id=uuid4(),
+                name="U2 Lec",
+                user_id=u2_id,
+                text="t1",
+                audio_url="lectures/test.mp3",
+            ),
+        ]
+    )
     await db_session.commit()
 
-    items, total, _ = await lecture_crud.get_list(user_id=u1_id)
+    items, total, _ = await lecture_crud.get_list(
+        page=1,
+        limit=20,
+        user_id=u2_id,
+        sort_by=LectureSortBy.CREATED_AT,
+        order=SortOrder.DESC,
+        requester_user_id=u2_id,
+    )
     assert total == 1
-    assert items[0].name == "U1 Lec"
+    assert items[0].name == "U2 Lec"
 
 
 @pytest.mark.asyncio
@@ -82,12 +135,19 @@ async def test_get_list_joinedload_user(
     lecture_crud: LectureCRUD, sample_user: User, db_session: AsyncSession
 ) -> None:
     lec = Lecture(
-        id=uuid4(), name="Joined Lec", user_id=sample_user.id, text="joined text"
+        id=uuid4(),
+        name="Joined Lec",
+        user_id=sample_user.id,
+        text="joined text",
+        audio_url="lectures/test.mp3",
+        public=True,
     )
     db_session.add(lec)
     await db_session.commit()
 
-    items, _, _ = await lecture_crud.get_list(limit=1)
+    items, _, _ = await lecture_crud.get_list(
+        page=1, limit=1, sort_by=LectureSortBy.CREATED_AT, order=SortOrder.DESC
+    )
     assert items[0].user.username == sample_user.username
 
 
@@ -113,7 +173,13 @@ async def test_create_lecture(
 async def test_read_lecture(
     lecture_crud: LectureCRUD, sample_user: User, db_session: AsyncSession
 ) -> None:
-    lec = Lecture(id=uuid4(), name="Read Me", text="Some text", user_id=sample_user.id)
+    lec = Lecture(
+        id=uuid4(),
+        name="Read Me",
+        text="Some text",
+        user_id=sample_user.id,
+        audio_url="lectures/test.mp3",
+    )
     db_session.add(lec)
     await db_session.commit()
 
@@ -130,7 +196,13 @@ async def test_read_lecture(
 async def test_update_lecture_fields(
     lecture_crud: LectureCRUD, sample_user: User, db_session: AsyncSession
 ) -> None:
-    lec = Lecture(id=uuid4(), name="Old Name", text="Old Text", user_id=sample_user.id)
+    lec = Lecture(
+        id=uuid4(),
+        name="Old Name",
+        text="Old Text",
+        user_id=sample_user.id,
+        audio_url="lectures/test.mp3",
+    )
     db_session.add(lec)
     await db_session.commit()
 
@@ -145,7 +217,13 @@ async def test_update_lecture_fields(
 async def test_delete_lecture(
     lecture_crud: LectureCRUD, sample_user: User, db_session: AsyncSession
 ) -> None:
-    lec = Lecture(id=uuid4(), name="To Delete", text="...", user_id=sample_user.id)
+    lec = Lecture(
+        id=uuid4(),
+        name="To Delete",
+        text="...",
+        user_id=sample_user.id,
+        audio_url="lectures/test.mp3",
+    )
     db_session.add(lec)
     await db_session.commit()
 
@@ -154,3 +232,191 @@ async def test_delete_lecture(
 
     found = await lecture_crud.read(id=lec.id)
     assert found is None
+
+
+@pytest.mark.asyncio
+async def test_get_list_search_by_name(
+    lecture_crud: LectureCRUD, sample_user: User, db_session: AsyncSession
+) -> None:
+    db_session.add_all(
+        [
+            Lecture(
+                id=uuid4(),
+                name="Python Advanced",
+                user_id=sample_user.id,
+                text="text",
+                audio_url="url",
+                public=True,
+            ),
+            Lecture(
+                id=uuid4(),
+                name="Python Basics",
+                user_id=sample_user.id,
+                text="text",
+                audio_url="url",
+                public=True,
+            ),
+            Lecture(
+                id=uuid4(),
+                name="Java Intro",
+                user_id=sample_user.id,
+                text="text",
+                audio_url="url",
+                public=True,
+            ),
+        ]
+    )
+    await db_session.commit()
+
+    items, total, _ = await lecture_crud.get_list(
+        page=1,
+        limit=10,
+        sort_by=LectureSortBy.NAME,
+        order=SortOrder.ASC,
+        search_name="python",
+    )
+
+    assert total == 2
+    assert len(items) == 2
+
+    for item in items:
+        assert "Python" in item.name
+
+    items_empty, total_empty, _ = await lecture_crud.get_list(
+        page=1,
+        limit=10,
+        sort_by=LectureSortBy.NAME,
+        order=SortOrder.ASC,
+        search_name="Golang",
+    )
+    assert total_empty == 0
+    assert len(items_empty) == 0
+
+
+@pytest.mark.asyncio
+async def test_get_list_owner_sees_private_lectures(
+    lecture_crud: LectureCRUD, db_session: AsyncSession
+) -> None:
+    """Проверка: владелец видит свои приватные лекции."""
+    user_id = uuid4()
+
+    db_session.add_all(
+        [
+            Lecture(
+                id=uuid4(),
+                name="Public",
+                user_id=user_id,
+                public=True,
+                text=".",
+                audio_url=".",
+            ),
+            Lecture(
+                id=uuid4(),
+                name="Private",
+                user_id=user_id,
+                public=False,
+                text=".",
+                audio_url=".",
+            ),
+        ]
+    )
+    await db_session.commit()
+
+    items, total, _ = await lecture_crud.get_list(
+        page=1,
+        limit=10,
+        sort_by=LectureSortBy.CREATED_AT,
+        order=SortOrder.DESC,
+        user_id=user_id,
+        requester_user_id=user_id,
+    )
+
+    assert total == 2
+    names = [item.name for item in items]
+    assert "Public" in names
+    assert "Private" in names
+
+
+@pytest.mark.asyncio
+async def test_get_list_stranger_cannot_see_private_lectures(
+    lecture_crud: LectureCRUD, db_session: AsyncSession
+) -> None:
+    """Проверка: посторонний пользователь видит только публичные лекции автора."""
+    owner_id = uuid4()
+    stranger_id = uuid4()
+
+    db_session.add_all(
+        [
+            Lecture(
+                id=uuid4(),
+                name="Public",
+                user_id=owner_id,
+                public=True,
+                text=".",
+                audio_url=".",
+            ),
+            Lecture(
+                id=uuid4(),
+                name="Private",
+                user_id=owner_id,
+                public=False,
+                text=".",
+                audio_url=".",
+            ),
+        ]
+    )
+    await db_session.commit()
+
+    items, total, _ = await lecture_crud.get_list(
+        page=1,
+        limit=10,
+        sort_by=LectureSortBy.CREATED_AT,
+        order=SortOrder.DESC,
+        user_id=owner_id,
+        requester_user_id=stranger_id,
+    )
+
+    assert total == 1
+    assert items[0].name == "Public"
+
+
+@pytest.mark.asyncio
+async def test_get_list_anonymous_cannot_see_private_lectures(
+    lecture_crud: LectureCRUD, db_session: AsyncSession
+) -> None:
+    """Проверка: аноним (requester_user_id=None) видит только публичные лекции."""
+    owner_id = uuid4()
+
+    db_session.add_all(
+        [
+            Lecture(
+                id=uuid4(),
+                name="Public",
+                user_id=owner_id,
+                public=True,
+                text=".",
+                audio_url=".",
+            ),
+            Lecture(
+                id=uuid4(),
+                name="Private",
+                user_id=owner_id,
+                public=False,
+                text=".",
+                audio_url=".",
+            ),
+        ]
+    )
+    await db_session.commit()
+
+    items, total, _ = await lecture_crud.get_list(
+        page=1,
+        limit=10,
+        sort_by=LectureSortBy.CREATED_AT,
+        order=SortOrder.DESC,
+        user_id=owner_id,
+        requester_user_id=None,
+    )
+
+    assert total == 1
+    assert items[0].name == "Public"

@@ -1,8 +1,8 @@
-"""create tables
+"""init
 
-Revision ID: 0d8c8a122f0b
-Revises: ed58283348f2
-Create Date: 2026-04-14 15:48:33.863460
+Revision ID: 2a50fca5cbfc
+Revises:
+Create Date: 2026-05-12 12:13:32.806379
 
 """
 
@@ -13,8 +13,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "0d8c8a122f0b"
-down_revision: str | Sequence[str] | None = "ed58283348f2"
+revision: str = "2a50fca5cbfc"
+down_revision: str | Sequence[str] | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -38,6 +38,7 @@ def upgrade() -> None:
         sa.Column("name", sa.String(length=127), nullable=False),
         sa.Column("audio_url", sa.String(), nullable=True),
         sa.Column("text", sa.Text(), nullable=False),
+        sa.Column("public", sa.Boolean(), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
         sa.ForeignKeyConstraint(

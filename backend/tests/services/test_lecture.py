@@ -6,6 +6,7 @@ import pytest
 from fastapi import HTTPException
 
 from src.api.schemas.lecture import LectureRead, LecturesPage
+from src.common.sorting import LectureSortBy, SortOrder
 from src.crud.lecture import LectureCRUD
 from src.infra.db.models.lecture import Lecture
 from src.infra.db.models.user import User
@@ -46,6 +47,7 @@ def sample_lecture(sample_user):
         text="Some text",
         created_at=now,
         updated_at=now,
+        public=True,  # ← FIX 1: Pydantic требует bool, а не None
     )
     lecture.user = sample_user
     return lecture
@@ -166,3 +168,123 @@ async def test_service_delete_lecture_access_denied(
 
     assert exc.value.status_code == 403
     mock_lecture_crud.delete.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_get_lectures_page_invalid_limit(lecture_service):
+    with pytest.raises(HTTPException) as exc:
+        await lecture_service.get_lectures_page(
+            page=1,
+            limit=0,
+            sort_by=LectureSortBy.NAME,
+            order=SortOrder.ASC,
+            user_id=None,
+        )
+    assert exc.value.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_get_lectures_page_forwards_params(lecture_service, mock_lecture_crud):
+    mock_lecture_crud.get_list.return_value = ([], 0, 1)
+
+    await lecture_service.get_lectures_page(
+        page=2,
+        limit=15,
+        sort_by=LectureSortBy.NAME,
+        order=SortOrder.DESC,
+        user_id=uuid4(),
+        search_name="test",
+    )
+    mock_lecture_crud.get_list.assert_called_once_with(
+        page=2,
+        limit=15,
+        sort_by=LectureSortBy.NAME,
+        order=SortOrder.DESC,
+        user_id=ANY,
+        search_name="test",
+        requester_user_id=None,
+    )
+
+
+@pytest.mark.asyncio
+async def test_get_lectures_page_forwards_all_params(
+    lecture_service, mock_lecture_crud
+):
+    """
+    Проверяем, что сервис корректно передает все параметры,
+    включая search_name и user_id_requester, в CRUD слой.
+    """
+    mock_lecture_crud.get_list.return_value = ([], 0, 1)
+    target_user_id = uuid4()
+    requester_id = uuid4()
+    search_query = "quantum physics"
+
+    await lecture_service.get_lectures_page(
+        page=1,
+        limit=20,
+        sort_by=LectureSortBy.CREATED_AT,
+        order=SortOrder.DESC,
+        user_id=target_user_id,
+        search_name=search_query,
+        requester_user_id=requester_id,
+    )
+
+    # Проверяем, что вызов CRUD произошел с правильными аргументами
+    mock_lecture_crud.get_list.assert_called_once_with(
+        page=1,
+        limit=20,
+        sort_by=LectureSortBy.CREATED_AT,
+        order=SortOrder.DESC,
+        user_id=target_user_id,
+        search_name=search_query,
+        requester_user_id=requester_id,  # Тот самый новый параметр
+    )
+
+
+@pytest.mark.asyncio
+async def test_update_lecture_owner_success(
+    lecture_service, mock_lecture_crud, sample_lecture, sample_user
+):
+    """Проверка успешного обновления лекции владельцем."""
+    mock_lecture_crud.read.return_value = sample_lecture
+    update_data = AsyncMock()  # Или объект LectureUpdate
+
+    mock_lecture_crud.update.return_value = sample_lecture
+
+    await lecture_service.update_lecture(sample_lecture.id, update_data, sample_user)
+
+    mock_lecture_crud.update.assert_called_once_with(
+        db_obj=sample_lecture, update_data=update_data
+    )
+
+
+@pytest.mark.asyncio
+async def test_update_lecture_access_denied(
+    lecture_service, mock_lecture_crud, sample_lecture
+):
+    """Проверка ошибки 403 при попытке обновить чужую лекцию."""
+    mock_lecture_crud.read.return_value = sample_lecture
+    stranger = User(id=uuid4(), username="stranger")
+    update_data = AsyncMock()
+
+    with pytest.raises(HTTPException) as exc:
+        await lecture_service.update_lecture(sample_lecture.id, update_data, stranger)
+
+    assert exc.value.status_code == 403
+    assert "not the owner" in exc.value.detail
+    mock_lecture_crud.update.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_delete_audiolink_access_denied(
+    lecture_service, mock_lecture_crud, sample_lecture
+):
+    """Проверка ошибки 403 при удалении аудио чужой лекции."""
+    mock_lecture_crud.read.return_value = sample_lecture
+    stranger = User(id=uuid4(), username="stranger")
+
+    with pytest.raises(HTTPException) as exc:
+        await lecture_service.delete_audiolink(sample_lecture.id, stranger)
+
+    assert exc.value.status_code == 403
+    mock_lecture_crud.update.assert_not_called()
