@@ -8,7 +8,7 @@ from src.services.stt import STTService, get_stt_service
 from src.services.llm import LLMService, get_llm_service
 from src.crud.lecture import LectureCRUD, get_lecture_crud
 from src.services.search import SearchService, get_search_service
-from src.infra.sql.models.lecture import Lecture
+from src.infra.db.models.lecture import Lecture
 from typing import Any
 from uuid import UUID
 from src.services.s3 import S3Service, get_s3_service

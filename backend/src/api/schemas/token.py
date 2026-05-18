@@ -1,13 +1,17 @@
 from dataclasses import dataclass
-from uuid import UUID
 from datetime import datetime
 from enum import StrEnum
+from uuid import UUID
+
 import jwt
+
 from src.settings import settings
+
 
 class TokenType(StrEnum):
     ACCESS = "access"
     REFRESH = "refresh"
+
 
 @dataclass
 class Token:
@@ -19,6 +23,8 @@ class Token:
         payload = {
             "uuid": str(self.uuid),
             "exp": int(self.expire.timestamp()),
-            "type": self.token_type.value
+            "type": self.token_type.value,
         }
-        return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+        return jwt.encode(
+            payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM
+        )

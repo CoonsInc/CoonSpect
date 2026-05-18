@@ -47,3 +47,10 @@ addopts = "--import-mode=importlib"
 env = [
     "ENVIRONMENT=pytest",
 ]
+
+[tool.ruff]
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "UP", "B", "SIM", "I"]
+ignore = ["B008"]

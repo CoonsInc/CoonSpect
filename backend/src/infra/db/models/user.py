@@ -1,15 +1,17 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+
 import uuid
+from typing import TYPE_CHECKING
 
 from sqlalchemy import String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from src.infra.sql.base import Base
+from src.infra.db.base import Base
 
 if TYPE_CHECKING:
-    from src.infra.sql.models.lecture import Lecture
+    from src.infra.db.models.lecture import Lecture
+
 
 class User(Base):
     __tablename__ = "users"
@@ -22,7 +24,5 @@ class User(Base):
 
     # Используем встроенный list вместо typing.List
     lectures: Mapped[list[Lecture]] = relationship(
-        "Lecture", 
-        back_populates="user", 
-        cascade="all, delete-orphan"
+        "Lecture", back_populates="user", cascade="all, delete-orphan"
     )

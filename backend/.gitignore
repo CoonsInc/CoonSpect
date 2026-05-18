@@ -1,4 +1,4 @@
 .venv
 __pycache__/
 dev-test/
-.mp3
+*.mp3
