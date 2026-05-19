@@ -123,7 +123,6 @@ export const applyFormat = (text: string, start: number, end: number, type: Form
             const currentLine = lineInfo.currentLine;
             
             const marker = type === 'list' ? '-' : '>';
-            // Ищем маркер с учетом любых пробелов в начале строки: например "   - текст"
             const regex = new RegExp(`^(\\s*)${marker}\\s+(.*)$`);
             const match = currentLine.match(regex);
             
@@ -131,14 +130,12 @@ export const applyFormat = (text: string, start: number, end: number, type: Form
             let offset = 0;
             
             if (match) {
-                // Если форматирование уже есть, убираем маркер, но сохраняем начальные пробелы (match[1]) и сам текст (match[2])
                 newLine = match[1] + match[2];
-                offset = -2; // Мы удалили маркер и пробел после него (2 символа)
+                offset = -2;
             } else {
-                // Если форматирования нет, добавляем маркер после начальных пробелов (чтобы отступы не сбивались)
                 const spacesMatch = currentLine.match(/^(\s*)(.*)$/);
                 newLine = (spacesMatch ? spacesMatch[1] : '') + `${marker} ` + (spacesMatch ? spacesMatch[2] : currentLine);
-                offset = 2; // Мы добавили маркер и пробел (2 символа)
+                offset = 2;
             }
             
             newText = text.substring(0, lineInfo.lineStartPosition) + newLine + text.substring(lineInfo.lineEndPosition);
@@ -181,52 +178,4 @@ export const applyFormat = (text: string, start: number, end: number, type: Form
     }
 
     return { newText, newCursorPos };
-};
-
-export const parseMarkdownToHtml = (text: string) => {
-    if (!text.trim()) return '';
-
-    const processInline = (str: string) => {
-        return str
-            .replace(/\*\*(.*?)\*\*/gu, '<strong class="font-bold text-[var(--color-text-primary)]">$1</strong>')
-            .replace(/\*([^*]+)\*/gu, '<em class="italic text-[var(--color-text-secondary)]">$1</em>')
-            .replace(/\[([^\]]+)\]\((.*?)\)/gu, '<a href="$2" class="text-[var(--color-text-purple)] hover:opacity-80 underline" target="_blank" rel="noopener noreferrer">$1</a>');
-    };
-
-    return text
-        .split('\n')
-        .map(line => {
-            if (line.trim() === '---') {
-                return `<hr class="my-6 border-t-2 border-[var(--color-border)] opacity-50" />`;
-            }
-            if (line.startsWith('#### ')) {
-                return `<h5 class="text-base font-bold mt-2 mb-1 text-[var(--color-text-primary)]">${processInline(line.slice(5))}</h5>`;
-            }
-            if (line.startsWith('### ')) {
-                return `<h4 class="text-lg font-bold mt-3 mb-2 text-[var(--color-text-primary)]">${processInline(line.slice(4))}</h4>`;
-            }
-            if (line.startsWith('## ')) {
-                return `<h3 class="text-xl font-bold mt-4 mb-2 text-[var(--color-text-primary)]">${processInline(line.slice(3))}</h3>`;
-            }
-            if (line.startsWith('# ')) {
-                return `<h2 class="text-2xl font-bold mt-5 mb-3 text-[var(--color-text-primary)]">${processInline(line.slice(2))}</h2>`;
-            }
-            
-            const quoteMatch = line.match(/^\s*>\s+(.*)$/);
-            if (quoteMatch) {
-                return `<blockquote class="border-l-4 border-[var(--color-text-purple)] pl-4 my-2 text-[var(--color-text-secondary)] italic">${processInline(quoteMatch[1])}</blockquote>`;
-            }
-
-            const listMatch = line.match(/^\s*-\s+(.*)$/);
-            if (listMatch) {
-                return `<li class="ml-4 text-[var(--color-text-primary)] mb-1 list-disc">${processInline(listMatch[1])}</li>`;
-            }
-
-            if (line.trim() === '') {
-                return '<br>';
-            }
-
-            return `<p class="mb-3 text-[var(--color-text-primary)] leading-relaxed">${processInline(line)}</p>`;
-        })
-        .join('');
 };

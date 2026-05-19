@@ -1,12 +1,24 @@
-FROM python:3.13.7
+FROM astral/uv:python3.13-bookworm-slim
 
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN groupadd --system appgroup && \
+    useradd --system --no-create-home --gid appgroup appuser
 
-ENV PYTHONPATH=/app/src
+COPY uv.lock pyproject.toml ./
+RUN uv sync --frozen --no-dev --no-install-workspace
 
 COPY . .
 
-CMD ["/bin/sh", "./start.sh"]
+RUN uv sync --frozen --no-dev --offline
+
+RUN chown -R appuser:appgroup /app
+
+RUN mkdir -p /home/appuser/.cache/uv && \
+    chown -R appuser:appgroup /home/appuser
+
+ENV PYTHONPATH=.
+
+USER appuser
+
+CMD ["bash", "start.sh"]

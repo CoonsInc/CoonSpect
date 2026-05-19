@@ -4,6 +4,8 @@ import { persist } from 'zustand/middleware';
 import { authApi } from '../api/authApi';
 import type { User } from '../types/users';
 
+import { useTextStore } from './textStore';
+
 interface AuthState {
   user: User | null;
   isInitializing: boolean;
@@ -77,9 +79,22 @@ export const useAuthStore = create<AuthState>()(
         } catch (e) {
           console.warn('Ошибка на сервере при выходе, но очищаем локально', e);
         } finally {
+         
           set({ user: null });
+          useTextStore.getState().reset();
+          
+          useAuthStore.persist.clearStorage();
+          useTextStore.persist.clearStorage();
+
+          localStorage.removeItem('app-storage');
+          localStorage.removeItem('auth-storage');
+          localStorage.removeItem('audio-storage');
+
+          window.location.href = '/login'; 
         }
       },
+
+
     }),
     {
       name: 'auth-storage',

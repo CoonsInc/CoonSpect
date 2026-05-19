@@ -10,7 +10,6 @@ import uuid
 
 app = FastAPI()
 
-
 model = SentenceTransformer('intfloat/multilingual-e5-small')
 qdrant = QdrantClient(host=os.getenv("QDRANT_HOST", "localhost"), port=6333)
 
@@ -54,19 +53,15 @@ async def index_audio(data: IndexRequest):
     qdrant.upsert(collection_name=COLLECTION_NAME, points=points)
     return {"status": "success", "indexed_segments": len(points)}
 
-# ... остальной код ...
 
 @app.get("/search")
 async def search(audio_id: str, query: str, limit: int = 5):
     try:
-        # 1. Проверяем, не отвалилась ли модель при старте
         if model is None:
             raise ValueError("Модель SentenceTransformer не загружена! Проверьте функцию lifespan.")
             
-        # 2. Векторизуем запрос
         query_vector = model.encode(f"query: {query}").tolist()
         
-        # 3. Строгий синтаксис фильтрации Qdrant (чтобы избежать ошибок валидации)
         qdrant_filter = Filter(
             must=[
                 FieldCondition(
@@ -76,10 +71,9 @@ async def search(audio_id: str, query: str, limit: int = 5):
             ]
         )
         
-        # 4. Поиск в БД (Новый синтаксис Qdrant 1.17.0+)
         search_response = qdrant.query_points(
             collection_name=COLLECTION_NAME,
-            query=query_vector,           # ВАЖНО: раньше было query_vector=..., теперь просто query=...
+            query=query_vector,
             query_filter=qdrant_filter,
             limit=limit
         )
@@ -95,14 +89,11 @@ async def search(audio_id: str, query: str, limit: int = 5):
         return {"results": results}
 
     except Exception as e:
-        # Захватываем полный стек ошибки
         error_trace = traceback.format_exc()
         
-        # Печатаем в консоль принудительно
         print("!!! КРИТИЧЕСКАЯ ОШИБКА В ПОИСКЕ !!!")
         print(error_trace)
         
-        # Возвращаем ошибку прямо в Postman!
         raise HTTPException(status_code=500, detail={
             "error": str(e),
             "traceback": error_trace.splitlines()
