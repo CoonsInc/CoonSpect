@@ -6,7 +6,7 @@ from src.api.schemas.lecture import LectureRead, LecturesPage, LectureUpdate
 from src.api.schemas.status import Status
 from src.common.sorting import LectureSortBy, SortOrder
 from src.infra.db.models.user import User
-from src.services.auth import authenticate
+from src.services.auth import authenticate, authenticate_optional
 from src.services.lecture import LectureService, get_lecture_service
 
 router = APIRouter(prefix="/lecture", tags=["lecture"])
@@ -57,6 +57,15 @@ async def delete(
     return Status.success("Deleted successfully")
 
 
+@router.get("/audiolink/{lecture_id}", response_model=Status)
+async def audiolink(
+    lecture_id: UUID,
+    user: User | None = Depends(authenticate_optional),
+    service: LectureService = Depends(get_lecture_service)
+):
+    return Status.success(await service.get_audiolink(lecture_id, user))
+
+
 @router.delete("/audiolink/{lecture_id}", response_model=LectureRead)
 async def delete_audiolink(
     lecture_id: UUID,
@@ -64,10 +73,3 @@ async def delete_audiolink(
     service: LectureService = Depends(get_lecture_service),
 ):
     return await service.delete_audiolink(lecture_id, user)
-
-
-@router.get("/audiolink/{lecture_id}", response_model=Status)
-async def audiolink(
-    lecture_id: UUID, service: LectureService = Depends(get_lecture_service)
-):
-    return Status.success(await service.get_audiolink(lecture_id))
