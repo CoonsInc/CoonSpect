@@ -1,3 +1,4 @@
+from botocore.exceptions import ClientError
 from fastapi import Depends
 from types_aiobotocore_s3 import S3Client
 
@@ -17,6 +18,16 @@ class S3Service:
             Key=key,
             WaiterConfig={"Delay": delay, "MaxAttempts": max_attempts},
         )
+
+    async def file_exists(self, bucket: str, key: str) -> bool:
+        """Проверяет, существует ли файл в бакете."""
+        try:
+            await self.s3_client.head_object(Bucket=bucket, Key=key)
+            return True
+        except ClientError as e:
+            if e.response["Error"]["Code"] == "404":
+                return False
+            raise e
 
     async def get_download_url(
         self, bucket: str, key: str, expiration: int = 3600

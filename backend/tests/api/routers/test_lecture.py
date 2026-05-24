@@ -81,14 +81,58 @@ async def test_delete_lecture_success(
 
 @pytest.mark.asyncio
 async def test_get_audiolink_route_success(
-    client: AsyncClient, sample_lecture: Lecture
+    client: AsyncClient,
+    sample_lecture: Lecture,
+    sample_user: User,
+    authorize_override
+) -> None:
+    """Тест получения ссылки (теперь возвращает Status)."""
+    authorize_override(sample_user)
+
+    fake_url = "https://fake.url"
+    with patch("src.services.s3.S3Service.get_download_url", return_value=fake_url):
+        response = await client.get(f"/lecture/audiolink/{sample_lecture.id}")
+
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+
+        assert data["status"] == "success"
+
+        if "details" in data:
+            assert data["details"] == fake_url
+        elif "message" in data:
+            assert data["message"] == fake_url
+        else:
+            print(f"\nActual response data: {data}")
+            assert fake_url in data.values()
+
+
+@pytest.mark.asyncio
+async def test_get_audiolink_route_no_auth_fail(
+    client: AsyncClient,
+    sample_lecture: Lecture
 ) -> None:
     """Тест получения ссылки (теперь возвращает Status)."""
     fake_url = "https://fake.url"
     with patch("src.services.s3.S3Service.get_download_url", return_value=fake_url):
         response = await client.get(f"/lecture/audiolink/{sample_lecture.id}")
 
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+@pytest.mark.asyncio
+async def test_get_audiolink_route_public_no_auth_success(
+    client: AsyncClient,
+    sample_lecture: Lecture
+) -> None:
+    """Тест получения ссылки (теперь возвращает Status)."""
+    sample_lecture.public = True
+    fake_url = "https://fake.url"
+    with patch("src.services.s3.S3Service.get_download_url", return_value=fake_url):
+        response = await client.get(f"/lecture/audiolink/{sample_lecture.id}")
+
         assert response.status_code == status.HTTP_200_OK
+
         data = response.json()
 
         assert data["status"] == "success"

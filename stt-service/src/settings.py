@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     
     @computed_field
     @property
-    def ALLOWED_EXTENSIONS(self) -> str:
+    def ALLOWED_EXTENSIONS(self) -> set[str]:
         return self.ALLOWED_AUDIO_EXTENSIONS.union(self.ALLOWED_VIDEO_EXTENSIONS)
 
 settings = Settings()
