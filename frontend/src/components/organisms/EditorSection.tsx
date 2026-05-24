@@ -1,5 +1,5 @@
 // components/organisms/EditorSection.tsx
-import React, { useState, useEffect, useRef} from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from 'react-router-dom';
 import { useTextStore } from "../../stores";
 import EditorToolbar from "../molecules/EditorToolbar";
@@ -9,21 +9,14 @@ import Button from "../atoms/Button";
 import Icon from "../atoms/Icon";
 import Text from "../atoms/Text";
 import { copyToClipboard, applyFormat } from "../../utils/mdUtils";
+import { downloadLocally, type DownloadFormat } from "../../utils/downloadUtils"; // Импортируем утилиты
 import MarkdownViewer from "../../utils/MarkdownViewer";
-
-import pdfMake from "pdfmake/build/pdfmake";
-import pdfFonts from "pdfmake/build/vfs_fonts";
-
-(pdfMake as any).addVirtualFileSystem(pdfFonts);
-
 
 interface EditorSectionProps {
   initialText: string;
   onSave: (newText: string, title: string) => void;
   onBack?: () => void;
 }
-
-type DownloadFormat = "txt" | "md" | "docx" | "pdf";
 
 const EditorSection: React.FC<EditorSectionProps> = ({ 
   initialText,
@@ -54,7 +47,6 @@ const EditorSection: React.FC<EditorSectionProps> = ({
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-
   useEffect(() => {
     setText(processedText || initialText);
   }, [processedText, initialText]);
@@ -81,105 +73,12 @@ const EditorSection: React.FC<EditorSectionProps> = ({
     onSave(text, localTitle);
   };
 
-  const convertMarkdownToHtml = (markdown: string): string => {
-    let html = markdown;
-    
-    html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
-    html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
-    html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
-    html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
-    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-    html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
-    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
-    html = html.replace(/^---$/gm, '<hr>');
-    html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
-    html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
-    html = html.replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>');
-    html = html.replace(/^(?!<[hulb]|<\/?[hulb])(.+)$/gm, '<p>$1</p>');
-    
-    return html;
-  };
-
-  const handleDownloadLocally = (format: DownloadFormat) => {
+  const handleDownloadWithUtil = (format: DownloadFormat) => {
     if (!localTitle.trim()) {
       alert("Пожалуйста, введите название лекции перед скачиванием.");
       return;
     }
-
-    const safeTitle = localTitle.replace(/\s+/g, '_');
-    let content = "";
-    let fileName = "";
-    let mimeType = "";
-
-    switch (format) {
-      case "txt":
-        content = text;
-        fileName = `${safeTitle}.txt`;
-        mimeType = "text/plain;charset=utf-8";
-        break;
-
-      case "md":
-        content = text;
-        fileName = `${safeTitle}.md`;
-        mimeType = "text/markdown;charset=utf-8";
-        break;
-
-      case "docx": {
-        const docxHtml = convertMarkdownToHtml(text);
-        content = `
-  <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word">
-  <head><meta charset="UTF-8"><title>${localTitle}</title></head>
-  <body><h1>${localTitle}</h1>${docxHtml}</body></html>`;
-        fileName = `${safeTitle}.doc`;
-        mimeType = "application/msword";
-        break;
-      }
-
-      case "pdf": {
-  const lines = text.split('\n');
-  const content: any[] = [];
-  
-  lines.forEach((line) => {
-    if (line.trim() === '') {
-      content.push({ text: '', margin: [0, 5] });
-    } else if (line.startsWith('# ')) {
-      content.push({ text: line.substring(2), bold: true, fontSize: 16, margin: [0, 10, 0, 5] });
-    } else if (line.startsWith('## ')) {
-      content.push({ text: line.substring(3), bold: true, fontSize: 14, margin: [0, 8, 0, 4] });
-    } else if (line.startsWith('### ')) {
-      content.push({ text: line.substring(4), bold: true, fontSize: 12, margin: [0, 6, 0, 3] });
-    } else {
-      content.push({ text: line, fontSize: 11, margin: [0, 2] });
-    }
-  });
-
-  const docDefinition = {
-    content: [
-      { text: localTitle, fontSize: 20, bold: true, margin: [0, 0, 0, 15], alignment: 'center' },
-      ...content
-    ]
-  };
-
-  pdfMake.createPdf(docDefinition).download(`${safeTitle}.pdf`);
-  return;
-}
-      default:
-        content = text;
-        fileName = `${safeTitle}.txt`;
-        mimeType = "text/plain;charset=utf-8";
-    }
-
-    const blob = new Blob([content], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    downloadLocally(format, text, localTitle);
   };
 
   const handleFormat = (type: 'bold' | 'italic' | 'list' | 'heading' | 'quote' | 'link' | 'divider') => {
@@ -265,7 +164,7 @@ const EditorSection: React.FC<EditorSectionProps> = ({
           </Heading>
         </div>
 
-        <div className="mb-50 flex justify-end">
+        <div className="w-full mb-50 flex justify-end">
           <Button 
             onClick={() => setIsSearchOpen(true)} 
             variant="secondary"
@@ -321,7 +220,7 @@ const EditorSection: React.FC<EditorSectionProps> = ({
           <EditorToolbar 
             onFormat={handleFormat}
             onSave={handleSaveClick}
-            onDownload={handleDownloadLocally}
+            onDownload={handleDownloadWithUtil}
             onCopy={handleCopy}
             onDelete={handleDelete}
             isDeleting={isDeleting} 

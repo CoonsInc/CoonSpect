@@ -107,11 +107,11 @@ const ViewLectureSection: React.FC<ViewLectureSectionProps> = ({
 
         {/* Плеер */}
         {audioUrl && (
-          <div className="mt-8 max-w-md mx-auto">
-            <Heading level={3} className="text-[var(--color-text-purple)] mb-3 text-base">
+          <div className="mt-8 max-w-xl mx-auto p-5 bg-[var(--color-bg-accent)] rounded-xl border border-[var(--color-border)] shadow-sm">
+            <Heading level={3} className="text-[var(--color-text-purple)] mb-3 text-base flex items-center gap-2">
               🎵 Запись лекции
             </Heading>
-            <audio ref={audioRef} controls src={audioUrl} className="w-full rounded-lg outline-none">
+            <audio ref={audioRef} controls src={audioUrl} className="w-full rounded-lg">
               Ваш браузер не поддерживает воспроизведение аудио.
             </audio>
           </div>

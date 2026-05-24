@@ -32,7 +32,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({ onFormat, onSave, onCopy,
     { format: "txt" as DownloadFormat, label: "TXT", description: "Простой текст" },
     { format: "md" as DownloadFormat, label: "Markdown", description: "С разметкой" },
     { format: "docx" as DownloadFormat, label: "DOCX", description: "Microsoft Word" },
-    { format: "pdf" as DownloadFormat, label: "PDF", description: "Документ PDF" },
+    { format: "pdf" as DownloadFormat, label: "PDF и печать", description: "Документ PDF и печать" },
   ];
 
   useEffect(() => {
