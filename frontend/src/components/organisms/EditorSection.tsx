@@ -202,7 +202,7 @@ const EditorSection: React.FC<EditorSectionProps> = ({
                 onChange={(e) => handleTextChange(e.target.value)}
                 disabled={isSaving}
                 className="w-full h-full bg-transparent text-[var(--color-text-primary)] p-5 outline-none resize-none text-sm leading-relaxed font-mono disabled:opacity-50"
-                placeholder="Введите text здесь..."
+                placeholder="Введите текст здесь..."
               />
               {isSaving && (
                 <div className="absolute inset-0 bg-black/10 flex items-center justify-center z-10">
