@@ -71,7 +71,7 @@ const EditorSection: React.FC<EditorSectionProps> = ({
     let html = markdown;
     
     const codeBlocks: string[] = [];
-    html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (match, language, code) => {
+    html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (_match, language, code) => {
       const placeholder = `%%CODEBLOCK_${codeBlocks.length}%%`;
       codeBlocks.push(`<pre><code class="language-${language || 'plaintext'}">${code.trim()}</code></pre>`);
       return placeholder;
