@@ -4,6 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
+from src.api.schemas.status import Status
 from src.infra.db.models.user import User
 from src.main import app
 
@@ -34,6 +35,6 @@ async def test_confirm_task_api_success(
         response = await client.post("/task/confirm")
 
         assert response.status_code == 200
-        assert response.json() == {"status": "processing_started"}
+        assert response.json() == Status.success("processing_started").model_dump()
 
         mock_confirm.assert_called_once_with(expected_task_id, sample_user.id)
