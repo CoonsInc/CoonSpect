@@ -1,5 +1,5 @@
 import { apiClient } from './index';
-import type { GetLecturesParams, LectureUpdate, LecturesPage, Lecture } from '../types/lecture';
+import type { GetLecturesParams, LectureUpdate, LecturesPage, Lecture, ExampleTaskDescription } from '../types/lecture';
 
 export async function getLecturesList(params: GetLecturesParams = {}): Promise<LecturesPage> {
     console.log(`[FRONT] Fetching lectures list`, params);
@@ -28,4 +28,9 @@ export async function deleteLecture(lectureId: string): Promise<{ status: string
     console.log(`[FRONT] Deleting lecture ${lectureId}`);
     const response = await apiClient.delete(`/lecture/delete/${lectureId}`);
     return response.data;
+}
+
+export async function getExampleList(): Promise<ExampleTaskDescription[]> {
+    const res = await apiClient.get('/task/example/list');
+    return res.data;
 }

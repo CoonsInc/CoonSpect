@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Lecture } from '../types/lecture.ts';
-import { startAndTrackLectureTask, getLectureResult } from '../api/generateApi';
+import { startAndTrackLectureTask, getLectureResult, startAndTrackExampleTask } from '../api/generateApi';
 import { getLectureAudioLink, editLecture, deleteLecture } from '../api/lecturesApi';
 
 interface AudioState {
@@ -26,6 +26,7 @@ interface AudioState {
   clearAudioFile: () => void;
 
   generateTranscript: (file: File) => Promise<void>;
+  generateExampleTranscript: (filename: string, title: string) => Promise<void>;
   loadLecture: (id: string) => Promise<void>;
   saveLectureChanges: (text: string, title: string) => Promise<void>;
   toggleLecturePrivacy: () => Promise<void>;
@@ -104,6 +105,41 @@ export const useTextStore = create<AudioState>()(
         }
       },
 
+      generateExampleTranscript: async (filename: string, title: string) => {
+        set({ 
+          isSaving: true, 
+          progressStatus: 'starting_example', 
+          lectureTitle: title,
+          audioFile: null, 
+          audioUrl: null 
+        });
+
+        try {
+          const { lectureId } = await startAndTrackExampleTask(
+            filename,
+            (status) => set({ progressStatus: status })
+          );
+
+          const lecture = await getLectureResult(lectureId);
+          const text = lecture.text || lecture.transcription || ''; 
+          
+          set({ 
+            activeLectureId: lectureId,
+            processedText: text, 
+            lectureTitle: lecture.name || title,
+            currentLecture: lecture,
+            progressStatus: 'finish' 
+          });
+
+        } catch (e) {
+          console.error('[FRONT] Example audio processing error:', e);
+          set({ progressStatus: 'error' });
+          throw e;
+        } finally {
+          set({ isSaving: false });
+        }
+      },
+
       restoreAudio: async () => {
         const id = get().activeLectureId;
         const currentAudio = get().audioUrl;
@@ -144,27 +180,23 @@ export const useTextStore = create<AudioState>()(
       },
 
       loadLecture: async (id: string) => {
-        // Устанавливаем статус загрузки, если это необходимо
         set({ progressStatus: 'loading' }); 
         
         try {
-          // 1. Получаем текстовую часть лекции с бэкенда
           const data = await getLectureResult(id);
           
-          // 2. Обязательно сначала обновляем стейт лекции и ID!
-          // Метод restoreAudio() будет брать id именно из get().activeLectureId
+
           set({
             currentLecture: data,
             activeLectureId: id,
             processedText: data.text || '',
             lectureTitle: data.name || '',
-            progressStatus: 'success', // или то значение, которое у тебя было по дефолту
+            progressStatus: 'success',
           });
 
           console.log(`[STORE] Lecture text loaded. Now restoring audio for: ${id}`);
 
-          // 3. Инкапсулированный вызов подгрузки аудио
-          // Используем await, чтобы дождаться ответа от сервера перед завершением loadLecture
+
           await get().restoreAudio();
 
           console.log(`[STORE] Audio link successfully restored.`);
@@ -172,7 +204,7 @@ export const useTextStore = create<AudioState>()(
         } catch (e) {
           console.error('[FRONT] Error inside loadLecture:', e);
           set({ progressStatus: 'error' });
-          throw e; // Пробрасываем ошибку дальше, чтобы компонент (роутер) её поймал
+          throw e;
         }
       },
 

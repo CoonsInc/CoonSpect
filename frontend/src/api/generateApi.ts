@@ -1,5 +1,13 @@
 import { apiClient, WS_BASE_URL } from './index';
 
+
+export async function getLectureResult(lectureId: string) {
+    console.log(`[FRONT] Requesting result for lecture ${lectureId}`);
+    const res = await apiClient.get(`/lecture/${lectureId}`);
+    console.log(`[FRONT] Result received for lecture ${lectureId}`);
+    return res.data;
+}
+
 export async function startAndTrackLectureTask(
     file: File,
     onStatusChange?: (status: string) => void
@@ -53,45 +61,63 @@ export async function startAndTrackLectureTask(
     console.log(`[FRONT] File uploaded to S3 successfully. Connecting to WS...`);
     onStatusChange?.("Файл загружен. Ожидание обработки...");
 
+    return trackTaskViaWebSocket(onStatusChange);
+}
+
+export async function startAndTrackExampleTask(
+    filename: string,
+    onStatusChange?: (status: string) => void
+): Promise<{ lectureId: string }> {
+    console.log(`[FRONT] Requesting example task start for: ${filename}`);
+    
+    const res = await apiClient.post(`/task/example`, { 
+        filename: filename 
+    });
+
+    const { task_id } = res.data; 
+    if (!task_id) {
+        throw new Error("Не удалось инициализировать задачу для примера");
+    }
+
+    console.log(`[FRONT] Example task ${task_id} initialized. Connecting to WS...`);
+    onStatusChange?.("Инициализация примера...");
+
+    return trackTaskViaWebSocket(onStatusChange);
+}
+
+function trackTaskViaWebSocket(
+    onStatusChange?: (status: string) => void
+): Promise<{ lectureId: string }> {
     return new Promise((resolve, reject) => {
         const ws = new WebSocket(`${WS_BASE_URL}/task/ws`);
 
-        ws.onopen = () => console.log(`[FRONT] WS open`);
+        ws.onopen = () => console.log('[FRONT] WS open');
 
         ws.onmessage = (event) => {
             try {
                 const { status, data } = JSON.parse(event.data);
                 console.log('[WS message parsed]', { status, data });
 
-                if (status === "finish") {
+                if (status === 'finish') {
                     ws.close();
-                    resolve({ lectureId: String(data) }); 
-                } 
-                else if (status === "error") {
+                    resolve({ lectureId: String(data) });
+                } else if (status === 'error') {
                     ws.close();
-                    reject(new Error(String(data || "Произошла ошибка при обработке")));
-                } 
-                else {
+                    reject(new Error(String(data || 'Произошла ошибка при обработке')));
+                } else {
                     onStatusChange?.(String(status));
                 }
             } catch (err) {
-                console.error(`[FRONT] Failed to parse WS message:`, event.data);
+                console.error('[FRONT] Failed to parse WS message:', event.data);
             }
         };
 
-        ws.onerror = (e) => {
-            console.error(`[FRONT] WS Error`, e);
+        ws.onerror = (e: Event) => {
+            console.error('[FRONT] WS Error', e);
             ws.close();
-            reject(e);
+            reject(new Error('Ошибка соединения с WebSocket'));
         };
 
-        ws.onclose = () => console.log(`[FRONT] WS closed`);
+        ws.onclose = () => console.log('[FRONT] WS closed');
     });
-}
-
-export async function getLectureResult(lectureId: string) {
-    console.log(`[FRONT] Requesting result for lecture ${lectureId}`);
-    const res = await apiClient.get(`/lecture/${lectureId}`);
-    console.log(`[FRONT] Result received for lecture ${lectureId}`);
-    return res.data;
 }

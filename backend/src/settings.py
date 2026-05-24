@@ -63,8 +63,10 @@ class Settings(BaseSettings):
 
     LLM_SERVICE_HOST : str = "localhost"
     LLM_SERVICE_PORT : int = 8003
+    
     SEARCH_SERVICE_HOST : str = "localhost" 
     SEARCH_SERVICE_PORT : int = 8004
+    
     LLM_SERVICE_HOST: str = "localhost"
     LLM_SERVICE_PORT: int = 8003
 
