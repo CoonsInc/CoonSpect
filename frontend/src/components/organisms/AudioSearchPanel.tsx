@@ -4,16 +4,9 @@ import Text from "../atoms/Text";
 import Heading from "../atoms/Heading";
 import Spinner from "../atoms/Spinner"; 
 import { formatSecondsToTime } from "../../utils/timeUtils";
+import { highlightText } from "../../utils/textUtils"; 
 import { useSearchStore } from '../../stores/searchStore';
 import { useTextStore } from '../../stores';
-
-// Интерфейс ответа от твоего FastAPI
-// interface SearchResult {
-//   score: number;
-//   start: number;
-//   end: number;
-//   text: string;
-// }
 
 interface AudioSearchPanelProps {
   isOpen: boolean;
@@ -126,7 +119,8 @@ const AudioSearchPanel: React.FC<AudioSearchPanelProps> = ({ isOpen, onClose, on
                   </span>
                 </div>
                 <Text size="sm" className="leading-relaxed text-[var(--color-text-primary)]">
-                  {result.text}
+                  {/* Переиспользуемая функция в действии */}
+                  {highlightText(result.text, query)}
                 </Text>
                 <div className="mt-2 text-right">
                     <span className="text-xs text-[var(--color-text-purple)] flex items-center justify-end gap-1 hover:underline">
