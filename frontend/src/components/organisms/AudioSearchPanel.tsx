@@ -4,16 +4,9 @@ import Text from "../atoms/Text";
 import Heading from "../atoms/Heading";
 import Spinner from "../atoms/Spinner"; 
 import { formatSecondsToTime } from "../../utils/timeUtils";
+import { highlightText } from "../../utils/textUtils"; 
 import { useSearchStore } from '../../stores/searchStore';
 import { useTextStore } from '../../stores';
-
-// Интерфейс ответа от твоего FastAPI
-// interface SearchResult {
-//   score: number;
-//   start: number;
-//   end: number;
-//   text: string;
-// }
 
 interface AudioSearchPanelProps {
   isOpen: boolean;
@@ -91,7 +84,7 @@ const AudioSearchPanel: React.FC<AudioSearchPanelProps> = ({ isOpen, onClose, on
           </button>
         </div>
 
-        {/* Результаты (скроллящаяся область) */}
+        {/* Результаты */}
         <div className="flex-grow overflow-y-auto p-5">
           {!activeLectureId && (
             <div className="text-center mt-10 text-[var(--color-text-secondary)]">
@@ -124,12 +117,10 @@ const AudioSearchPanel: React.FC<AudioSearchPanelProps> = ({ isOpen, onClose, on
                   <span className="text-xs font-mono font-bold px-2 py-1 rounded bg-[var(--color-text-purple)]/10 text-[var(--color-text-purple)]">
                     {formatSecondsToTime(result.start)}
                   </span>
-                  <span className="text-xs text-[var(--color-text-secondary)]">
-                    score: {(result.score * 100).toFixed(0)}%
-                  </span>
                 </div>
                 <Text size="sm" className="leading-relaxed text-[var(--color-text-primary)]">
-                  {result.text}
+                  {/* Переиспользуемая функция в действии */}
+                  {highlightText(result.text, query)}
                 </Text>
                 <div className="mt-2 text-right">
                     <span className="text-xs text-[var(--color-text-purple)] flex items-center justify-end gap-1 hover:underline">
