@@ -16,7 +16,6 @@ broker = (
     .with_middlewares(SimpleRetryMiddleware())
 )
 
-print(settings.ENVIRONMENT)
 if settings.ENVIRONMENT and settings.ENVIRONMENT == "pytest":
     broker = InMemoryBroker()
 

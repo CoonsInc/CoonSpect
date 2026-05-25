@@ -99,12 +99,13 @@ async def test_service_delete_audiolink_success(
 
 @pytest.mark.asyncio
 async def test_service_get_audiolink_success(
-    lecture_service, mock_lecture_crud, mock_s3_service, sample_lecture
+    lecture_service, mock_lecture_crud, mock_s3_service, sample_lecture, sample_user
 ):
-    mock_lecture_crud.read_with_user.return_value = sample_lecture
+    mock_lecture_crud.read.return_value = sample_lecture
     mock_s3_service.get_download_url.return_value = "https://presigned-url.com"
+    sample_lecture.audio_url = "my-bucket/audio.mp3"
 
-    url = await lecture_service.get_audiolink(sample_lecture.id)
+    url = await lecture_service.get_audiolink(sample_lecture.id, sample_user)
 
     assert isinstance(url, str)
     assert url == "https://presigned-url.com"
@@ -115,13 +116,13 @@ async def test_service_get_audiolink_success(
 
 @pytest.mark.asyncio
 async def test_service_get_audiolink_no_audio(
-    lecture_service, mock_lecture_crud, sample_lecture
+    lecture_service, mock_lecture_crud, sample_lecture, sample_user
 ):
+    mock_lecture_crud.read.return_value = sample_lecture
     sample_lecture.audio_url = None
-    mock_lecture_crud.read_with_user.return_value = sample_lecture
 
     with pytest.raises(HTTPException) as exc:
-        await lecture_service.get_audiolink(sample_lecture.id)
+        await lecture_service.get_audiolink(sample_lecture.id, sample_user)
     assert exc.value.status_code == 404
 
 

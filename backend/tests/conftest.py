@@ -15,7 +15,7 @@ from src.infra.db.session import get_db
 from src.infra.redis import get_redis
 from src.infra.taskiq import broker
 from src.main import app as fastapi_app
-from src.services.auth import authenticate
+from src.services.auth import authenticate, authenticate_optional
 from src.services.llm import LLMService, get_llm_service
 from src.services.password import PasswordService
 from src.services.s3 import S3Service, get_s3_service
@@ -84,9 +84,9 @@ def authorize_override():
 
     def _override(user: User | None):
         fastapi_app.dependency_overrides[authenticate] = lambda: user
+        fastapi_app.dependency_overrides[authenticate_optional] = lambda: user
 
     yield _override
-    # Очистка произойдет в setup_dependencies
 
 
 @pytest.fixture

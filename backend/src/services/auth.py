@@ -146,3 +146,15 @@ async def authenticate(
             raise Exception(f"WebSocket Auth Failed: {e.detail}") from e
 
         raise e
+
+async def authenticate_optional(
+    conn: HTTPConnection, auth_service: AuthService = Depends(get_auth_service)
+) -> User | None:
+    """Универсальная опциональная авторизация для HTTP и WebSocket."""
+
+    access_token = conn.cookies.get("access_token")
+
+    try:
+        return await auth_service.authenticate(access_token)
+    except HTTPException:
+        return None

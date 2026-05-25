@@ -7,6 +7,7 @@ from loguru import logger
 from src.api.schemas.lecture import LectureRead, LecturesPage, LectureUpdate
 from src.common.sorting import LectureSortBy, SortOrder
 from src.crud.lecture import LectureCRUD, get_lecture_crud
+from src.infra.db.models.lecture import Lecture
 from src.infra.db.models.user import User
 from src.services.s3 import S3Service, get_s3_service
 
@@ -26,6 +27,29 @@ class LectureService:
             raise HTTPException(500, "Internal error: invalid audio storage format")
 
         return parts[0], parts[1]
+    
+    def _check_read_lecture_access(self, lecture: Lecture, user: User | None) -> None:
+        if lecture.public:
+            return
+        
+        if user is None:
+            raise HTTPException(403, "Access denied: You are not the owner")
+
+        if lecture.user_id != user.id:
+            raise HTTPException(403, "Access denied: You are not the owner")
+        
+    def _check_modify_lecture_access(self, lecture: Lecture, user: User | None) -> None:
+        if user is None:
+            raise HTTPException(403, "Access denied: You are not the owner")
+
+        if lecture.user_id != user.id:
+            raise HTTPException(403, "Access denied: You are not the owner")
+    
+    async def _get_lecture(self, lecture_id: UUID) -> Lecture:
+        lecture = await self.lecture_crud.read(lecture_id)
+        if lecture is None:
+            raise HTTPException(404, "Lecture not found")
+        return lecture
 
     async def get_lectures_page(
         self,
@@ -58,17 +82,15 @@ class LectureService:
         lecture = await self.lecture_crud.read_with_user(lecture_id)
         if lecture is None:
             raise HTTPException(404, "Lecture not found")
+
         return LectureRead.model_validate(lecture)
 
     async def update_lecture(
         self, lecture_id: UUID, update_data: LectureUpdate, user: User
     ) -> LectureRead:
-        lecture = await self.lecture_crud.read(lecture_id)
-        if lecture is None:
-            raise HTTPException(404, "Lecture not found")
+        lecture = await self._get_lecture(lecture_id)
 
-        if user.id != lecture.user_id:
-            raise HTTPException(403, "Access denied: You are not the owner")
+        self._check_modify_lecture_access(lecture, user)
 
         updated = await self.lecture_crud.update(
             db_obj=lecture, update_data=update_data
@@ -76,12 +98,9 @@ class LectureService:
         return LectureRead.model_validate(updated)
 
     async def delete_lecture(self, lecture_id: UUID, user: User) -> None:
-        lecture = await self.lecture_crud.read(lecture_id)
-        if lecture is None:
-            raise HTTPException(404, "Lecture not found")
+        lecture = await self._get_lecture(lecture_id)
 
-        if user.id != lecture.user_id:
-            raise HTTPException(403, "Access denied: You are not the owner")
+        self._check_modify_lecture_access(lecture, user)
 
         audio_url = lecture.audio_url
 
@@ -98,12 +117,9 @@ class LectureService:
                 )
 
     async def delete_audiolink(self, lecture_id: UUID, user: User) -> LectureRead:
-        lecture = await self.lecture_crud.read(lecture_id)
-        if lecture is None:
-            raise HTTPException(404, "Lecture not found")
+        lecture = await self._get_lecture(lecture_id)
 
-        if user.id != lecture.user_id:
-            raise HTTPException(403, "Access denied: You are not the owner")
+        self._check_modify_lecture_access(lecture, user)
 
         bucket, filename = self._parse_audio_url(lecture.audio_url)
 
@@ -114,8 +130,11 @@ class LectureService:
 
         return LectureRead.model_validate(updated)
 
-    async def get_audiolink(self, lecture_id: UUID) -> str:
-        lecture = await self.get_lecture(lecture_id)
+    async def get_audiolink(self, lecture_id: UUID, user: User | None) -> str:
+        lecture = await self._get_lecture(lecture_id)
+        
+        self._check_read_lecture_access(lecture, user)
+        
         bucket, filename = self._parse_audio_url(lecture.audio_url)
         return await self.s3_service.get_download_url(bucket, filename, 43200)
 
