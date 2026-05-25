@@ -34,9 +34,15 @@ export default function MarkdownViewer({ content }: MarkdownViewerProps) {
           <blockquote className="border-l-4 border-[var(--color-text-purple)] pl-4 my-2 text-[var(--color-text-secondary)] italic" {...props} />
         ),
         
-        ul: ({node, ref, ...props}: any) => <ul className="my-2 list-inside" {...props} />,
-        ol: ({node, ref, ...props}: any) => <ol className="my-2 list-decimal list-inside" {...props} />,
-        li: ({node, ref, ...props}: any) => <li className="ml-4 text-[var(--color-text-primary)] mb-1 list-disc" {...props} />,
+        ul: ({node, ref, ...props}: any) => (
+          <ul className="my-3 pl-6" style={{ listStyleType: 'disc', listStylePosition: 'outside' }} {...props} />
+        ),
+        ol: ({node, ref, ...props}: any) => (
+          <ol className="my-3 pl-6" style={{ listStyleType: 'decimal', listStylePosition: 'outside' }} {...props} />
+        ),
+        li: ({node, ref, ...props}: any) => (
+          <li className="text-[var(--color-text-primary)] mb-1" {...props} />
+        ),
         
         hr: ({node, ref, ...props}: any) => <hr className="my-6 border-t-2 border-[var(--color-border)] opacity-50" {...props} />
       }}

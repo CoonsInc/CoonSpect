@@ -2,7 +2,7 @@ import React from 'react';
 import Icon from '../atoms/Icon';
 import Heading from '../atoms/Heading';
 import Text from '../atoms/Text';
-import type { Lecture } from '../../types/lecture'; // Проверь правильность пути до файла с типами!
+import type { Lecture } from '../../types/lecture';
 
 interface LectureCardProps {
   lecture: Lecture;
@@ -15,19 +15,24 @@ const LectureCard: React.FC<LectureCardProps> = ({ lecture, onClick }) => {
       onClick={onClick}
       className="flex flex-col p-5 bg-[var(--color-bg-accent)] rounded-xl border border-[var(--color-border)] shadow-sm hover:shadow-md hover:border-[var(--color-text-purple)] transition-all cursor-pointer group relative h-full"
     >
-      <div className="mb-4">
+      <div className="absolute top-4 right-4 z-10 flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-medium transition-all">
+        {lecture.public ? (
+          <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1 px-2.5 py-1 rounded-full">
+            <Icon name="Globe" className="w-3 h-3" /> 
+          </span>
+        ) : (
+          <span className="bg-zinc-500/10 text-zinc-400 border border-zinc-500/20 flex items-center gap-1 px-2.5 py-1 rounded-full">
+            <Icon name="Lock" className="w-3 h-3" /> 
+          </span>
+        )}
+      </div>
+
+      <div className="mb-4 pr-20"> 
         <Heading level={4} className="text-lg font-semibold group-hover:text-[var(--color-text-purple)] transition-colors line-clamp-2 mb-2">
           {lecture.name || 'Лекция без названия'}
         </Heading>
         
-        <div className="space-y-1">
-          {lecture.lecturer && (
-            <Text className="text-sm text-[var(--color-text-secondary)]">
-              <span className="font-medium text-[var(--color-text-primary)]">Лектор: </span> 
-              {lecture.lecturer}
-            </Text>
-          )}
-          
+        <div className="space-y-1">          
           <Text className="text-sm text-[var(--color-text-secondary)]">
             <span className="font-medium text-[var(--color-text-primary)]">Создатель: </span> 
             {lecture.user?.username || 'Неизвестен'}

@@ -10,7 +10,6 @@ import uuid
 
 app = FastAPI()
 
-
 model = SentenceTransformer('intfloat/multilingual-e5-small')
 qdrant = QdrantClient(host=os.getenv("QDRANT_HOST", "localhost"), port=6333)
 

@@ -2,14 +2,16 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuthStore } from "../../stores/authStore";
 import { useAppStore } from "../../stores/appStore";
-import { Menu, LogOut, User, Upload, Home, FileText, Sun, Moon, LogIn } from "lucide-react";
+import { useTextStore } from "../../stores/textStore";
+import { Menu, LogOut, User, Upload, Home, FileText, Sun, Moon, LogIn, BookOpen} from "lucide-react";
 
 
 const Header: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuthStore();
-  const { theme, setTheme } = useAppStore();
+  const { theme, setTheme, setAppState } = useAppStore();
+  const { reset } = useTextStore();
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
@@ -25,14 +27,22 @@ const Header: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const handleGoHome = () => {
+    reset(); 
+    setAppState('upload'); 
+    navigate("/upload");
+  };
+
   const scrollTo = (id: string) => {
     const isMainPage = location.pathname === "/" || location.pathname === "/upload";
     
     if (id === "hero") {
       if (!isMainPage) {
-        navigate("/upload"); 
+        handleGoHome();
         setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 100);
       } else {
+        reset();
+        setAppState('upload');
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
       setMenuOpen(false);
@@ -48,7 +58,11 @@ const Header: React.FC = () => {
   };
 
   const handleNavigation = (path: string) => {
-    navigate(path);
+    if (path === "/" || path === "/upload") {
+      handleGoHome();
+    } else {
+      navigate(path);
+    }
     setMenuOpen(false);
     setProfileMenuOpen(false);
   };
@@ -69,15 +83,22 @@ const Header: React.FC = () => {
     { id: "hero", label: "Главная", icon: Home, mobileOnly: false },
     { id: "how", label: "Как это работает", icon: FileText, mobileOnly: false },
     { id: "examples", label: "Примеры", icon: Upload, mobileOnly: false },
-    { path: "/lectures", label: "Мои лекции", icon: FileText, mobileOnly: false },
+    { path: "/lectures", label: "Каталог", icon: BookOpen, mobileOnly: false },
+    { path: "/my-lectures", label: "Мои лекции", icon: FileText, mobileOnly: false },
   ];
+
+  const isActive = (item: typeof navItems[0]) => {
+    if (item.path) return location.pathname === item.path;
+    if (item.id === "hero") return location.pathname === "/" || location.pathname === "/upload";
+    return false;
+  };
 
   return (
     <header className="fixed top-0 left-0 w-full bg-[var(--color-bg-accent)]/80 backdrop-blur-md border-b border-[var(--color-border)] z-50">
       <div className="max-w-7xl mx-auto flex justify-between items-center py-4 px-6">
         {/* Logo */}
         <h1
-          onClick={() => handleNavigation("/")}
+          onClick={() => handleNavigation("/upload")}
           className="text-2xl font-semibold text-[var(--color-text-purple)] cursor-pointer hover:opacity-80 transition"
         >
           CoonSpect
@@ -89,7 +110,11 @@ const Header: React.FC = () => {
             <button
               key={item.id || item.path}
               onClick={() => item.path ? handleNavigation(item.path) : scrollTo(item.id!)}
-              className="hover:text-[var(--color-text-purple)] transition"
+              className={`transition ${
+                isActive(item) 
+                  ? "text-[var(--color-text-purple)] font-medium" 
+                  : "hover:text-[var(--color-text-purple)]"
+              }`}
             >
               {item.label}
             </button>
@@ -160,7 +185,11 @@ const Header: React.FC = () => {
               <button
                 key={item.id || item.path}
                 onClick={() => item.path ? handleNavigation(item.path) : scrollTo(item.id!)}
-                className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg hover:bg-[var(--color-bg-secondary)] hover:text-[var(--color-text-purple)] transition"
+                className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-lg transition ${
+                  isActive(item)
+                    ? "bg-[var(--color-bg-secondary)] text-[var(--color-text-purple)]"
+                    : "hover:bg-[var(--color-bg-secondary)] hover:text-[var(--color-text-purple)]"
+                }`}
               >
                 <item.icon className="w-4 h-4" />
                 {item.label}

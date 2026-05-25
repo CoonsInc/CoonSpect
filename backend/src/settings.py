@@ -60,6 +60,13 @@ class Settings(BaseSettings):
 
     STT_SERVICE_HOST: str = "localhost"
     STT_SERVICE_PORT: int = 8001
+
+    LLM_SERVICE_HOST : str = "localhost"
+    LLM_SERVICE_PORT : int = 8003
+    
+    SEARCH_SERVICE_HOST : str = "localhost" 
+    SEARCH_SERVICE_PORT : int = 8004
+    
     LLM_SERVICE_HOST: str = "localhost"
     LLM_SERVICE_PORT: int = 8003
 
@@ -99,6 +106,10 @@ class Settings(BaseSettings):
         return f"http://{self.LLM_SERVICE_HOST}:{self.LLM_SERVICE_PORT}"
 
     @computed_field
+    @property
+    def SEARCH_SERVICE_URL(self) -> str:
+        return f"http://{self.SEARCH_SERVICE_HOST}:{self.SEARCH_SERVICE_PORT}"
+    
     @property
     def ALLOWED_EXTENSIONS(self) -> set[str]:
         return self.ALLOWED_AUDIO_EXTENSIONS.union(self.ALLOWED_VIDEO_EXTENSIONS)

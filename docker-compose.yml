@@ -65,6 +65,7 @@ services:
       - NVIDIA_VISIBLE_DEVICES=all
       - PYTHONUNBUFFERED=1
       - LD_LIBRARY_PATH=/usr/local/lib/python3.10/dist-packages/nvidia/cudnn/lib/:$LD_LIBRARY_PATH
+      - OLLAMA_KEEP_ALIVE=1m
     networks:
       - coonspect-net
     volumes:
@@ -119,11 +120,7 @@ services:
     build: ./frontend/
     container_name: coonspect-frontend
     ports:
-      - "3000:80" 
-    # environment:
-    #   - VITE_API_URL=http://backend:8000
-    #   - VITE_API_BASE_URL=http://localhost:3000
-    #   - VITE_WS_BASE_URL=ws://backend:3000
+      - "3000:80"
     depends_on:
       - backend
     networks:
@@ -160,21 +157,21 @@ services:
     networks:
       - coonspect-net
 
-  # search-service:
-  #   build: ./search-service/
-  #   container_name: coonspect-search
-  #   ports:
-  #     - "8004:8000"
-  #   environment:
-  #     - QDRANT_HOST=qdrant
-  #     - PYTHONUNBUFFERED=1
-  #     - HF_HOME=/app/cache/huggingface
-  #   depends_on:
-  #     - qdrant
-  #   volumes:
-  #     - search_models:/app/cache
-  #   networks:
-  #     - coonspect-net
+  search-service:
+    build: ./search-service/
+    container_name: coonspect-search
+    ports:
+      - "8004:8000"
+    environment:
+      - QDRANT_HOST=qdrant
+      - PYTHONUNBUFFERED=1
+      - HF_HOME=/app/cache/huggingface
+    depends_on:
+      - qdrant
+    volumes:
+      - search_models:/app/cache
+    networks:
+      - coonspect-net
 
 networks:
   coonspect-net:

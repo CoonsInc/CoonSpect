@@ -1,4 +1,3 @@
-
 import { useEffect } from "react";
 import Header from "../components/organisms/Header";
 import Heading from "../components/atoms/Heading";
@@ -6,10 +5,12 @@ import Text from "../components/atoms/Text";
 import Button from "../components/atoms/Button";
 import Icon from "../components/atoms/Icon";
 import { useAuthStore } from "../stores/authStore";
+import { useAppStore } from "../stores";
 import { useNavigate } from "react-router-dom";
 
 const ProfilePage = () => {
   const { user, logout } = useAuthStore();
+  const { setAppState } = useAppStore();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -27,6 +28,15 @@ const ProfilePage = () => {
     }
   };
 
+  const handleNewLecture = () => {
+    setAppState("upload");
+    navigate("/");
+  };
+
+  const handleMyLectures = () => {
+    navigate("/my-lectures");
+  };
+
   if (!user) {
     return null;
   }
@@ -37,16 +47,13 @@ const ProfilePage = () => {
       
       <div className="pt-24 p-6">
         <div className="max-w-4xl mx-auto">
-          {/* Заголовок с кнопкой назад */}
           <div className="flex items-center gap-4 mb-8">
             <Heading level={2} className="text-3xl font-bold">
               Профиль пользователя
             </Heading>
           </div>
           
-          {/* Карточка профиля */}
           <div className="bg-[var(--color-bg-secondary)] rounded-xl p-8 border border-[var(--color-border)] shadow-sm">
-            {/* Аватар и основная информация */}
             <div className="flex items-center gap-6 mb-8 pb-6 border-b border-[var(--color-border)]">
               <div className="w-20 h-20 rounded-full bg-[var(--color-text-purple)]/10 flex items-center justify-center">
                 <span className="text-3xl font-bold text-[var(--color-text-purple)]">
@@ -66,10 +73,9 @@ const ProfilePage = () => {
               </div>
             </div>
 
-            {/* Действия */}
             <div className="flex flex-col sm:flex-row gap-4 pt-6">
               <Button
-                onClick={() => navigate("/files")}
+                onClick={handleMyLectures}
                 variant="secondary"
                 className="flex items-center gap-2 justify-center"
               >
@@ -78,7 +84,7 @@ const ProfilePage = () => {
               </Button>
               
               <Button
-                onClick={() => navigate("/upload")}
+                onClick={handleNewLecture}
                 variant="secondary"
                 className="flex items-center gap-2 justify-center"
               >

@@ -1,131 +1,103 @@
 import ollama
 import os
-from typing import Dict, Any
+import json
+from typing import Dict, Any, List
 from qdrant_client import QdrantClient
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 class LLMEngine:
     def __init__(self):
-        host = os.getenv("OLLAMA_HOST", "http://localhost:11434")
-        self.client = ollama.AsyncClient(host=host)
-        self.prompt_tmp = self.load_prompt()
-        
-        qdrant_host = "qdrant"
-        self.qdrant = QdrantClient(host=qdrant_host, port=6333)
-        
+        self.client = ollama.AsyncClient(host=os.getenv("OLLAMA_HOST", "http://localhost:11434"))
+        self.qdrant = QdrantClient(host="qdrant", port=6333)
         self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=8000,
-            chunk_overlap=400,
-            separators=["\n\n", "\n", ". ", " ", ""]
+            chunk_size=5000,
+            chunk_overlap=500
         )
-    
-    def load_prompt(self) -> str:
-        try:
-            with open("prompt.txt", "r", encoding="utf-8") as f:
-                return f.read()
-        except FileNotFoundError:
-            return "Блляяя, прикинь надо структурированный конспектик зафигачить из этого:"
-    
-    async def summarize(self, text: str, model: str = "ministral-3:3b") -> Dict[str, Any]:
-        """Основной метод для генерации конспекта"""
-        if not text.strip():
-            return {
-                "summary": "", 
-                "success": False,
-                "error": "The text for llm is empty"
+
+    async def summarize(self, text: str, model: str = "qwen2.5:3b") -> Dict[str, Any]:
+        chunks = self.text_splitter.split_text(text)
+        all_extracted_facts = []
+        used_sources = set()
+
+        for i, chunk in enumerate(chunks):
+            context = await self._get_reranked_context(chunk)
+            if context:
+                used_sources.update([c['meta'] for c in context])
+
+            facts = await self._extract_facts(chunk, context, model)
+            all_extracted_facts.append(facts)
+
+        final_summary = await self._build_final_summary(all_extracted_facts, model)
+
+        return {
+            "summary": final_summary,
+            "success": True,
+            "sources": list(used_sources)
+        }
+
+    async def _extract_facts(self, chunk: str, context: List[Dict], model: str) -> str:
+        """Извлекает только суть без 'воды' и вступлений"""
+        context_str = "\n".join([c['text'] for c in context])
+        prompt = f"""
+        ИЗВЛЕКИ ТЕХНИЧЕСКИЕ ФАКТЫ.
+        Контекст из книг: {context_str}
+        Текст лекции: {chunk}
+
+        ЗАДАЧА:
+        Выпиши только ключевые тезисы, определения и алгоритмы. 
+        НЕ ПИШИ вступлений. НЕ ПИШИ 'В этом отрывке...'. 
+        Только список фактов.
+        Если данные из книг дополняют лекцию — включи их в тезис в скобках.
+        """
+        res = await self.client.generate(
+            model=model, 
+            prompt=prompt,
+            options={
+                "num_ctx": 8192 
             }
-        
+        )
+        return res['response']
+
+    async def _build_final_summary(self, facts: List[str], model: str) -> str:
+        """Один раз превращает гору фактов в красивый Markdown"""
+        full_facts = "\n---\n".join(facts)
+        prompt = f"""
+        ТЫ - ЭКСПЕРТ-РЕЦЕНЗЕНТ.
+        Перед тобой набор сырых фактов из лекции:
+        {full_facts}
+
+        ЗАДАЧА:
+        Составь из этого ОДИН цельный технический конспект.
+        Используй заголовки ##, разделы 'Ключевые понятия', 'Детальный разбор', 'Итог'.
+        Удали повторы. Сделай текст логичным и бесшовным.
+        Выходной язык: Русский.
+        """
+        res = await self.client.generate(
+            model=model, 
+            prompt=prompt,
+            options={
+                "num_ctx": 8192 
+            }
+        )
+        return res['response']
+
+    async def _get_reranked_context(self, chunk: str) -> List[Dict]:
+        """Умный поиск: ищем и фильтруем мусор"""
         try:
-            chunks = self.text_splitter.split_text(text)
-            full_summary = []
-            context_summary = ""
-            used_sources = set()
+            emb = await self.client.embeddings(model="nomic-embed-text", prompt=chunk[:1000])
+            search = self.qdrant.query_points(
+                collection_name="coon_knowledge_base",
+                query=emb["embedding"],
+                limit=5
+            )
             
-            for i, chunk in enumerate(chunks):
-                progress_info = f"ЧАСТЬ {i+1} ИЗ {len(chunks)}."
-                
-                context_text = ""
-                try:
-                    if self.qdrant.collection_exists("coon_knowledge_base"):
-                        embed_response = await self.client.embeddings(
-                            model="nomic-embed-text", 
-                            prompt=chunk[:1500]
-                        )
-
-                        embedding = embed_response["embedding"]
-
-                        search_response = self.qdrant.query_points(
-                            collection_name="coon_knowledge_base",
-                            query=embedding,
-                            limit=3
-                        )
-
-                        context_parts = []
-                        score_threshold = 0.91
-
-                        for hit in search_response.points:
-                            if hit.score < score_threshold:
-                                print(f"[RAG] Пропущен кусок с низким score: {hit.score:.3f}")
-                                continue
-                            
-                            payload = hit.payload or {}
-                            chunk_text = payload.get("page_content", "")
-                            meta = payload.get("metadata", {})
-                            
-                            book_title = meta.get("book_title", "Неизвестный источник")
-                            page = meta.get("page", "?")
-                            
-                            source_info = f"{book_title} (стр. {page})"
-                            used_sources.add(source_info)
-                            
-                            rag_chunk = f"--- Источник: {source_info} (score: {hit.score:.2f}) ---\n{chunk_text}"
-                            print(rag_chunk)
-                            context_parts.append(rag_chunk)
-
-                        if context_parts:
-                            context_text = "Дополнительная информация из базы знаний:\n" + "\n\n".join(context_parts) + "\n\n"
-                        else:
-                            print(f"[RAG] Для части {i+1} релевантных данных не найдено.")
-                except Exception as rag_e:
-                    print(f"[RAG Warning] Ошибка поиска контекста: {rag_e}")
-                
-                context_instruction = ""
-                if context_summary:
-                    context_instruction = (
-                        f"\nКРАТКОЕ СОДЕРЖАНИЕ ПРЕДЫДУЩИХ ЧАСТЕЙ (используй для понимания общего контекста, "
-                        f"но НЕ повторяй в текущем конспекте):\n{context_summary}\n\nПродолжай конспектировать."
-                    )
-                
-                prompt = f"{self.prompt_tmp}\n{context_instruction}\n{context_text}\n{progress_info}\nТЕКСТ ЛЕКЦИИ:\n{chunk}"
-                
-                response = await self.client.generate(
-                    model=model,
-                    prompt=prompt
-                )
-                chunk_result = response["response"]
-                full_summary.append(chunk_result)
-                
-                if len(chunks) > 1 and i < len(chunks) - 1:
-                    context_summary = await self._get_brief_context(chunk_result, model)
-                    
-            return {
-                "summary": "\n\n---\n\n".join(full_summary),
-                "success": True,
-                "chunks_processed": len(chunks),
-            }
-            
-        except Exception as e:
-            return {
-                "summary": "",
-                "success": False,
-                "error": str(e)
-            }
-
-    async def _get_brief_context(self, text: str, model: str) -> str:
-        """Генерируем выжимку предыдущей закинутой части"""
-        try:
-            prompt = f"Кратко (в 3-4 предложениях) опиши суть этого фрагмента лекции: {text[:2000]}"
-            res = await self.client.generate(model=model, prompt=prompt)
-            return res["response"]
+            valid_points = []
+            for hit in search.points:
+                if hit.score > 0.85: 
+                    valid_points.append({
+                        "text": hit.payload.get("page_content", ""),
+                        "meta": f"{hit.payload['metadata'].get('book_title')} (стр. {hit.payload['metadata'].get('page')})"
+                    })
+            return valid_points
         except:
-            return ""
+            return []

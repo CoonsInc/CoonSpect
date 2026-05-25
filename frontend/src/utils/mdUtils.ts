@@ -123,7 +123,6 @@ export const applyFormat = (text: string, start: number, end: number, type: Form
             const currentLine = lineInfo.currentLine;
             
             const marker = type === 'list' ? '-' : '>';
-            // Ищем маркер с учетом любых пробелов в начале строки: например "   - текст"
             const regex = new RegExp(`^(\\s*)${marker}\\s+(.*)$`);
             const match = currentLine.match(regex);
             
@@ -131,14 +130,12 @@ export const applyFormat = (text: string, start: number, end: number, type: Form
             let offset = 0;
             
             if (match) {
-                // Если форматирование уже есть, убираем маркер, но сохраняем начальные пробелы (match[1]) и сам текст (match[2])
                 newLine = match[1] + match[2];
-                offset = -2; // Мы удалили маркер и пробел после него (2 символа)
+                offset = -2;
             } else {
-                // Если форматирования нет, добавляем маркер после начальных пробелов (чтобы отступы не сбивались)
                 const spacesMatch = currentLine.match(/^(\s*)(.*)$/);
                 newLine = (spacesMatch ? spacesMatch[1] : '') + `${marker} ` + (spacesMatch ? spacesMatch[2] : currentLine);
-                offset = 2; // Мы добавили маркер и пробел (2 символа)
+                offset = 2;
             }
             
             newText = text.substring(0, lineInfo.lineStartPosition) + newLine + text.substring(lineInfo.lineEndPosition);

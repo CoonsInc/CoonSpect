@@ -1,7 +1,17 @@
 [
   {
-    "filename": "example1.mp3",
-    "title": "Example title 1",
-    "description": "Example description 1"
+    "filename": "OSlecture.m4a",
+    "title": "Лекция по операционным системам",
+    "description": "Обзор механизмов контроля доступа, ACL и ролей в различных ОС."
+  },
+  {
+    "filename": "psychology.m4a",
+    "title": "Внимание - ключ к успеху",
+    "description": "Секрет высокой производительности. Лекция Гарвардского университета"
+  },
+  {
+    "filename": "geology.m4a",
+    "title": "Введение в инженерную геологию",
+    "description": "Обзор инженерной геологии: задачи, разделы, развитие и международный опыт."
   }
 ]

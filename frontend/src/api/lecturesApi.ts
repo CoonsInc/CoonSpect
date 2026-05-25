@@ -1,9 +1,14 @@
 import { apiClient } from './index';
-import type { GetLecturesParams, LectureUpdate, LecturesPage, Lecture } from '../types/lecture';
+import type { GetLecturesParams, LectureUpdate, LecturesPage, Lecture, ExampleTaskDescription } from '../types/lecture';
 
 export async function getLecturesList(params: GetLecturesParams = {}): Promise<LecturesPage> {
     console.log(`[FRONT] Fetching lectures list`, params);
-    const response = await apiClient.get('/lecture/list', { params });
+    
+    const { scope, ...restParams } = params;
+    
+    const endpoint = scope === 'my' ? '/user/lectures' : '/lecture/list';
+    
+    const response = await apiClient.get(endpoint, { params: restParams });
     return response.data;
 }
 
@@ -17,4 +22,15 @@ export async function getLectureAudioLink(lectureId: string): Promise<{ status: 
     console.log(`[FRONT] Fetching audio link for ${lectureId}`);
     const response = await apiClient.get(`/lecture/audiolink/${lectureId}`);
     return response.data; 
+}
+
+export async function deleteLecture(lectureId: string): Promise<{ status: string; message: string }> {
+    console.log(`[FRONT] Deleting lecture ${lectureId}`);
+    const response = await apiClient.delete(`/lecture/delete/${lectureId}`);
+    return response.data;
+}
+
+export async function getExampleList(): Promise<ExampleTaskDescription[]> {
+    const res = await apiClient.get('/task/example/list');
+    return res.data;
 }
