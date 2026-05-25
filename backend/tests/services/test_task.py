@@ -64,12 +64,15 @@ async def test_start_task_success_logic(
 
     with (
         patch("src.services.task.settings") as mock_settings,
-        patch(expected_patch, new_callable=AsyncMock) as mock_kiq,
+        patch("src.services.task.run_audio_pipeline") as mock_task,
         patch("src.services.task.update_status", new_callable=AsyncMock),
     ):
         mock_settings.BACKEND_MODE = mode
         mock_settings.S3_RAW_LECTURES_BUCKET = "test-bucket"
         mock_settings.ALLOWED_EXTENSIONS = {".mp3"}
+
+        mock_kiq = AsyncMock()
+        mock_task.kiq = mock_kiq
 
         result = await task_service.start(user, original_filename="any.mp3")
 

@@ -49,7 +49,13 @@ class LLMEngine:
         Только список фактов.
         Если данные из книг дополняют лекцию — включи их в тезис в скобках.
         """
-        res = await self.client.generate(model=model, prompt=prompt)
+        res = await self.client.generate(
+            model=model, 
+            prompt=prompt,
+            options={
+                "num_ctx": 8192 
+            }
+        )
         return res['response']
 
     async def _build_final_summary(self, facts: List[str], model: str) -> str:
@@ -66,7 +72,13 @@ class LLMEngine:
         Удали повторы. Сделай текст логичным и бесшовным.
         Выходной язык: Русский.
         """
-        res = await self.client.generate(model=model, prompt=prompt)
+        res = await self.client.generate(
+            model=model, 
+            prompt=prompt,
+            options={
+                "num_ctx": 8192 
+            }
+        )
         return res['response']
 
     async def _get_reranked_context(self, chunk: str) -> List[Dict]:

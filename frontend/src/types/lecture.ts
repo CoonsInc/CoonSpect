@@ -36,3 +36,9 @@ export interface LecturesPage {
     page: number;
     pages: number;
 }
+
+export interface ExampleTaskDescription {
+    filename: string;
+    title: string;
+    description: string;
+}

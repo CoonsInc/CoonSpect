@@ -1,7 +1,13 @@
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from loguru import logger
 
-from src.api.schemas.task import TaskInit, TaskStartRequest
+from src.api.schemas.status import Status
+from src.api.schemas.task import (
+    ExampleTaskDescription,
+    ExampleTaskInit,
+    TaskInit,
+    TaskStartRequest,
+)
 from src.infra.db.models.user import User
 from src.services.auth import authenticate
 from src.services.task import TaskService, get_task_service
@@ -18,6 +24,20 @@ async def start(
 ):
     return await service.start(user, request.filename)
 
+
+@router.post("/example", response_model=ExampleTaskInit)
+async def example(
+    request: TaskStartRequest,
+    user: User = Depends(authenticate),
+    service: TaskService = Depends(get_task_service),
+):
+    return await service.start_example(user, request.filename)
+
+@router.get("/example/list", response_model=list[ExampleTaskDescription])
+async def example_list(
+    service: TaskService = Depends(get_task_service)
+):
+    return service.example_list()
 
 @router.websocket("/ws")
 async def websocket_endpoint(
@@ -49,8 +69,9 @@ async def websocket_endpoint(
 
 @router.post("/confirm")
 async def confirm_task(
-    user: User = Depends(authenticate), service: TaskService = Depends(get_task_service)
+    user: User = Depends(authenticate),
+    service: TaskService = Depends(get_task_service)
 ):
     task_id = service.get_task_id(user)
     await service.confirm_upload_and_start(task_id, user.id)
-    return {"status": "processing_started"}
+    return Status.success(msg = "processing_started")
